@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POC v2 — 화면 변화 감지와 자동 인식 | 젬대버 2호점</title>
+  <meta name="description" content="pHash 화면 변화 감지, uiautomator XML 파싱, NCC 템플릿 매칭, 요소 DB까지. POC v2에서 구현한 스마트폰 화면 자동 인식 시스템.">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="https://sfex11.github.io/y700_public/" class="logo">
+        <span class="logo-icon">⚡</span>
+        젬대버<span class="sub">2호점</span>
+      </a>
+      <nav>
+        <a href="https://sfex11.github.io/y700_public/#work-log">작업일지</a>
+        <a href="https://github.com/sfex11/y700_public" target="_blank">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <article class="article-wrap">
+
+    <div class="article-header">
+      <a href="https://sfex11.github.io/y700_public/#work-log" class="back-link">← 작업일지 목록</a>
+      <span class="article-tag">POC v2</span>
+      <h1>"화면이 바뀌었다"<br>변화 감지부터 템플릿 매칭까지</h1>
+      <div class="meta">2026-04-13 · 젬대버 프로젝트 · 읽기 6분</div>
+    </div>
+
+    <div class="article-body">
+
+      <p>POC v1이 돌아가긴 했다. 하지만 에이전트가 매번 수동으로 "캡처해"라고 명령을 받아야 한다. 자율 에이전트라면 화면이 바뀌었을 때 스스로 반응해야 한다.</p>
+
+      <p>POC v2의 목표: <strong>에이전트가 화면 변화를 감지하고, UI 요소를 자동으로 인식한다.</strong></p>
+
+      <hr>
+
+      <h2>"dHash로 화면 변화를 잡아라"</h2>
+
+      <p>OpenCV가 없으니 PIL + numpy만 써야 한다. 다행히 dHash (difference Hash)는 그 정도로 충분하다.</p>
+
+      <h3>원리</h3>
+      <ol>
+        <li>이미지를 9×8로 축소</li>
+        <li>인접 픽셀끼리 비교 → 64비트 해시 생성</li>
+        <li>이전 해시와 해밍 거리 비교</li>
+        <li>거리가 임계값 미만이면 "변화 없음", 이상이면 "변화 감지"</li>
+      </ol>
+
+      <pre><code>def screen_changed(threshold=10):
+    current_hash = dhash(capture_screen())
+    dist = hamming_distance(prev_hash, current_hash)
+    return dist &gt; threshold</code></pre>
+
+      <p>성능: <strong>5ms 미만</strong>. 사실상 무시할 수 있는 수준이다. 60fps로 화면을 모니터링해도 여유다.</p>
+
+      <div class="callout success">
+        <div class="callout-title">✅ 구현 완료</div>
+        <p><code>src/screen.py</code> — dHash 기반 변화 감지 + 해밍 거리 계산 + 해시 리셋 기능까지.</p>
+      </div>
+
+      <hr>
+
+      <h2>"uiautomator dump 해봤는데... 노드 6개?"</h2>
+
+      <p>안드로이드의 uiautomator를 쓰면 UI 요소의 트리 구조를 XML로 뽑을 수 있다. 이걸 파싱하면 clickable 요소의 좌표를 자동으로 찾을 수 있다.</p>
+
+      <pre><code>adb shell uiautomator dump /sdcard/ui.xml
+adb pull /sdcard/ui.xml</code></pre>
+
+      <p>그래서 <code>src/ui_extractor.py</code>를 만들었다. clickable 요소의 bounds 좌표를 자동 추출하는 파서.</p>
+
+      <p>잘 돌아간다. 일반 앱에서는.</p>
+
+      <h3>대항해시대 온라인은 달랐다</h3>
+      <p>타겟 게임인 대항해시대 온라인 (<code>com.linegames.uwogl</code>)는 PC 클라이언트를 태블릿에 원격 렌더링하는 방식이다. SurfaceView 하나에 모든 게임 화면이 그려진다.</p>
+
+      <p>uiautomator 결과: <strong>노드 6개, clickable 요소 0개.</strong></p>
+
+      <blockquote>SurfaceView 단일 렌더링이라 uiautomator는 사실상 미동작.<br>이걸 어떻게 인식하나.</blockquote>
+
+      <p>결론: uiautomator로는 대항해시대를 인식할 수 없다. 다른 방법이 필요했다.</p>
+
+      <hr>
+
+      <h2>"OpenCV 없이 템플릿 매칭?"</h2>
+
+      <p>결국 전통적인 방법으로 돌아갔다. <strong>템플릿 매칭.</strong> 미리 찍어둔 버튼/아이콘 이미지를 화면에서 찾는 방식.</p>
+
+      <p>문제는 OpenCV가 Termux에서 빌드 안 된다는 것. 하지만 NCC (Normalized Cross-Correlation) 원리 자체가 복잡하지 않다.</p>
+
+      <h3>numpy + PIL로 NCC 구현</h3>
+
+      <pre><code>def template_match(screen, template):
+    # 2D 배열로 변환 → 슬라이딩 윈도우로 NCC 계산
+    # 가장 높은 상관계수 위치 반환
+    result = np.zeros((sh - th + 1, sw - tw + 1))
+    for y in range(result.shape[0]):
+        for x in range(result.shape[1]):
+            region = screen[y:y+th, x:x+tw]
+            result[y, x] = ncc(region, template)
+    return np.unravel_index(result.argmax(), result.shape)</code></pre>
+
+      <table>
+        <thead>
+          <tr><th>검색 범위</th><th>소요 시간</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>전체 검색 (2560×1600)</td><td>~53ms</td></tr>
+          <tr><td>ROI 한정 검색</td><td>~8ms</td></tr>
+        </tbody>
+      </table>
+
+      <p>ROI (관심 영역)를 지정하면 8ms. 충분히 실시간에 가깝다.</p>
+
+      <div class="callout success">
+        <div class="callout-title">✅ src/template_matcher.py</div>
+        <p>OpenCV 없이 numpy + PIL만으로 NCC 템플릿 매칭 구현. 템플릿 디렉토리: <code>~/phone-agent/templates/</code></p>
+      </div>
+
+      <hr>
+
+      <h2>"화면별로 요소를 관리하자"</h2>
+
+      <p>게임은 여러 화면으로 구성된다. 로그인 화면, 메인 화면, 상점, 전투... 각 화면마다 클릭 가능한 요소가 다르다.</p>
+
+      <p>이걸 YAML로 관리하자고 해서 <code>src/element_db.py</code>를 만들었다.</p>
+
+      <pre><code># wiki/30-elements/login.yaml
+screen: login
+elements:
+  - name: id_input
+    template: id_input.png
+    roi: [100, 300, 500, 400]
+  - name: login_button
+    template: login_btn.png
+    roi: [200, 600, 400, 700]</code></pre>
+
+      <p>화면이 바뀌면 → 현재 화면 판별 → 해당 화면의 요소 DB 로드 → 템플릿 매칭으로 위치 탐색 → 자동 클릭. 이 흐름이다.</p>
+
+      <hr>
+
+      <h2>"버그 두 개 잡음"</h2>
+
+      <p>POC v2를 만들면서 버그를 두 개 잡았다.</p>
+
+      <table>
+        <thead>
+          <tr><th>버그</th><th>원인</th><th>수정</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>요소 인식 실패</td><td>키명 불일치 (<code>actionable_elements</code> vs <code>elements</code>)</td><td>키명 일치 수정</td></tr>
+          <tr><td><code>/stop</code> 명령 무시</td><td><code>command_queue.get()</code>에 5분 타임아웃</td><td>5초마다 stop_event 체크로 변경</td></tr>
+        </tbody>
+      </table>
+
+      <p>두 번째 버그가 좀 치명적이었다. 에이전트를 멈추고 싶은데 <code>/stop</code>을 보내도 5분을 기다려야 한다. 이건 실사용에서는 못 쓴다. <code>stop_event</code>를 5초마다 폴링하도록 바꿨다.</p>
+
+      <hr>
+
+      <h2>POC v2 최종 구조</h2>
+
+      <pre><code>~/phone-agent/src/
+├── main_poc.py         # POC v2 메인 루프
+├── telegram_bot.py     # 텔레그램 봇
+├── command_parser.py   # LLM 응답 파싱
+├── screen.py           # pHash 화면변화감지
+├── llm_client.py       # llama.cpp API 클라이언트
+├── control.py          # ADB tap/swipe
+├── ui_extractor.py     # uiautomator 파서
+├── template_matcher.py # NCC 템플릿 매칭
+└── element_db.py       # YAML 요소 DB</code></pre>
+
+      <hr>
+
+      <h2>배운 것</h2>
+
+      <ul>
+        <li>SurfaceView 단일 렌더링 앱은 uiautomator가 안 통한다 — 템플릿 매칭으로 우회</li>
+        <li>OpenCV 없이도 numpy + PIL로 NCC 템플릿 매칭이 가능하다 (ROI 한정 시 8ms)</li>
+        <li>dHash로 화면 변화 감지는 5ms 미만으로 충분히 가볍다</li>
+        <li>긴 타임아웃이 있는 큐에서 중지 명령을 처리하려면 event 폴링 패턴을 써야 한다</li>
+        <li>YAML로 화면별 요소를 정의하면 게임 화면 전환 관리가 체계적으로 된다</li>
+      </ul>
+
+    </div>
+
+    <div class="article-nav">
+      <a href="https://sfex11.github.io/y700_public/posts/01-llm-phone-agent-poc1.html">
+        <div class="nav-label">← 이전 글</div>
+        <div class="nav-title">Termux에서 AI 에이전트 첫 동작</div>
+      </a>
+      <a href="https://sfex11.github.io/y700_public/posts/03-vulkan-gpu-speedup.html">
+        <div class="nav-label">다음 글 →</div>
+        <div class="nav-title">Adreno 840 Vulkan GPU 가속</div>
+      </a>
+    </div>
+
+  </article>
+
+  <footer class="site-footer">
+    <div class="footer-links">
+      <a href="https://github.com/sfex11" target="_blank">GitHub</a>
+      <a href="https://threads.net/@reedo.dev" target="_blank">Threads</a>
+      <a href="https://sfex11.github.io/Myno_public/" target="_blank">1호점</a>
+    </div>
+    <p>© 2026 Myno 2호 젬대버 체인점 — Built with Termux + llama.cpp on Lenovo Y700</p>
+  </footer>
+
+  <script src="../script.js"></script>
+</body>
+</html>
