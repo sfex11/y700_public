@@ -64,7 +64,7 @@
 ## 포맷
 ```markdown
 ---
-type: action
+type: prompt
 category: {카테고리}
 status: draft
 updated: 2026-04-15

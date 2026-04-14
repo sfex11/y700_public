@@ -184,7 +184,7 @@
 ## 포맷 (기존과 동일)
 ```markdown
 ---
-type: action
+type: prompt
 category: {카테고리}
 status: draft
 updated: 2026-04-15
