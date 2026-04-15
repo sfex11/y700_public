@@ -25,7 +25,7 @@ updated: 2026-04-15
 
 ```
 wiki/
-├── reader.md              ← 이 파일. 안내서
+├── readme.md              ← 안내서
 ├── actions/               ← "무엇을 할 수 있는가" (64개)
 │   ├── login/             (4)  앱 실행, 서버선택, 팝업, 출석
 │   ├── sailing/           (6)  자동항해, 수동항해, 폭풍회피, 항구감지, 재해, 내구도
@@ -52,8 +52,32 @@ wiki/
 │   ├── event.md                이벤트/팝업
 │   ├── recovery.md             복구 모드
 │   └── stopped.md              봇 정지
+├── strategies/            ← "어떤 전략을 쓸까" (7개)
+│   ├── modes.md                전략 모드 FSM (6모드 정의 + 전이도)
+│   ├── survival.md             생존/복구 전략
+│   ├── profit.md               수익 극대화 전략 (기본 모드)
+│   ├── growth.md               성장 투자 전략
+│   ├── story.md                스토리 진행 전략
+│   ├── combat.md               전투 전략 (적극/회피)
+│   └── bootstrap.md            초기 부팅 전략
+├── compiled/              ← "런타임에 쓰는 것" (20개)
+│   ├── runtime-flow.md         전체 실행 사이클 정의
+│   ├── decision_tables/        (6) state×mode → goal 점수 테이블
+│   │   ├── in-port.md
+│   │   ├── sailing.md
+│   │   ├── trade.md
+│   │   ├── combat.md
+│   │   ├── event.md
+│   │   └── recovery-stopped.md
+│   ├── checklists/             (8) state별 팩트 추출 항목
+│   └── prompts/                (5) gemma용 초단문 판정 프롬프트
+│       ├── classify-state.md
+│       ├── select-action.md
+│       ├── verify-yesno.md
+│       ├── extract-trade-event.md
+│       └── classify-popup.md
 └── bot/                   ← "어떻게 돌아가는가" (9개)
-    ├── state-machine.md        상태기계 전이도
+    ├── state-machine.md        게임 상태기계 전이도
     ├── controllers/            (5) 실행 컨트롤러
     ├── PROMPT_actions.md       액션 생성 프롬프트
     ├── PROMPT_actions_phase2.md Phase2 생성 프롬프트
