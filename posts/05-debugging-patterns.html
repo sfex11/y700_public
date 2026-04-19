@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>게임 자동화에서 배운 7가지 문제해결 패턴 | 젬대버 2호점</title>
+  <meta name="description" content="대항해시대 오리진 봇을 만들며 겪은 버그와 해결 과정에서 도출한 재사용 가능한 문제해결 패턴 7가지. 검사 함수 분리, 거짓 양성 캐스케이드, 타이밍 불일치, 무한 루프, UI 중첩, 환경 의존성, 하드코딩.">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="https://sfex11.github.io/y700_public/" class="logo">
+        <span class="logo-icon">⚡</span>
+        젬대버<span class="sub">2호점</span>
+      </a>
+      <nav>
+        <a href="https://sfex11.github.io/y700_public/#work-log">작업일지</a>
+        <a href="https://github.com/sfex11/y700_public" target="_blank">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <article class="article-wrap">
+
+    <div class="article-header">
+      <a href="https://sfex11.github.io/y700_public/#work-log" class="back-link">← 작업일지 목록</a>
+      <span class="article-tag">디버깅</span>
+      <h1>"2시간 30분이 10분이 될 수 있었다"<br>게임 자동화에서 배운 7가지 문제해결 패턴</h1>
+      <div class="meta">2026-04-19 · 젬대버 프로젝트 · 읽기 12분</div>
+    </div>
+
+    <div class="article-body">
+
+      <p>대항해시대 오리진이라는 모바일 게임의 항해 루프를 자동화하는 프로젝트를 진행하고 있다. ADB로 태블릿을 제어하고, 템플릿 매칭 + 규칙 기반 분류기로 화면 상태를 인식한 뒤, LLM이 액션을 선택하는 구조다.</p>
+
+      <p>3일간의 개발에서 예상치 못한 버그들이 연달아 발생했고, 각각을 해결하면서 <strong>반복되는 패턴</strong>이 보이기 시작했다. 이 글은 그 패턴들을 정리한 것이다.</p>
+
+      <p>게임 자동화뿐만 아니라, <strong>외부 시스템과 상호작용하는 모든 자동화 프로젝트</strong>에 적용할 수 있는 원칙들이다.</p>
+
+      <hr>
+
+      <h2>패턴 1: 사이드이펙트 숨겨진 버그</h2>
+
+      <h3>문제</h3>
+      <p>검사 함수가 검사와 상태 변경을 동시에 수행하면, 호출 순서에 따라 결과가 달라진다.</p>
+
+      <h3>사례</h3>
+      <pre><code>def screen_changed(self, screenshot_path):
+    current_hash = capture_hash(screenshot_path)
+    changed = hamming(current_hash, self._last_hash) > threshold
+    self._last_hash = current_hash  # ← 상태 변경!
+    return changed</code></pre>
+
+      <p>메인 루프에서 <code>screen_changed()</code>를 호출하면 <code>_last_hash</code>가 업데이트된다. 그런데 액션 실행 후 <code>verify_result()</code>에서 같은 스크린샷으로 다시 <code>screen_changed()</code>를 호출하면, 이미 해시가 같으므로 <strong>항상 "변화 없음"</strong>을 반환한다.</p>
+
+      <h3>해결</h3>
+      <pre><code># 순수 함수로 분리
+def capture_hash(screenshot_path):
+    return dhash(load_image(screenshot_path))
+
+# 상태 변경은 별도 메서드
+def update_hash(self, h):
+    self._last_hash = h</code></pre>
+
+      <div class="callout">
+        <div class="callout-title">💡 원칙</div>
+        <p><strong>검사 함수는 상태를 변경하지 않는다.</strong> 순수 함수로 분리하면 버그 원인을 추적하기 훨씬 쉬워진다.</p>
+      </div>
+
+      <hr>
+
+      <h2>패턴 2: 거짓 양성 캐스케이드</h2>
+
+      <h3>문제</h3>
+      <p>하나의 템플릿이 여러 화면에서 매칭되면, 전체 상태 인식이 무너진다.</p>
+
+      <h3>사례</h3>
+      <table>
+        <tr><th>템플릿</th><th>의도</th><th>실제</th><th>원인</th></tr>
+        <tr><td><code>popup_close_x.png</code></td><td>팝업 닫기</td><td>모든 화면에서 conf=1.0</td><td>X 모양이 너무 단순</td></tr>
+        <tr><td><code>wh_back_arrow.png</code></td><td>창고 뒤로가기</td><td>미니맵에서도 0.76~1.0</td><td>버튼 형상 유사</td></tr>
+        <tr><td><code>dialog_auto_btn.png</code></td><td>대화 자동진행</td><td>창고에서도 1.0</td><td>버튼 형상 유사</td></tr>
+      </table>
+
+      <p>하나의 거짓 양성이 상태 분류를 틀리게 만들고, 잘못된 상태에서 잘못된 액션이 선택되는 <strong>연쇄 반응</strong>이 일어난다.</p>
+
+      <h3>해결 (강도 순)</h3>
+      <ol>
+        <li><strong>삭제</strong> — 단순 형상 템플릿은 아예 제거</li>
+        <li><strong>ROI 제한</strong> — 탐색 영역 축소</li>
+        <li><strong>우선순위</strong> — 검색 순서 지정</li>
+        <li><strong>규칙 기반 대체</strong> — 색상/밝도 기준으로 판별</li>
+      </ol>
+
+      <p>가장 효과적이었던 것은 <strong>규칙 기반 대체</strong>였다:</p>
+      <pre><code># 템플릿 대신 중앙 밝도 기준
+center_brightness = frame[100:350, 100:620].mean()
+is_popup = center_brightness > 120  # 항구=38, 팝업=182</code></pre>
+
+      <div class="callout">
+        <div class="callout-title">💡 원칙</div>
+        <p><strong>단순 형상(버튼, 화살표, X)은 템플릿 매칭에 부적합하다.</strong> 규칙/색상/레이아웃 기반으로 대체하라.</p>
+      </div>
+
+      <hr>
+
+      <h2>패턴 3: precondition-실행-verification 타이밍 불일치</h2>
+
+      <h3>문제</h3>
+      <p>액션은 성공했는데 verification이 다음 프레임을 보거나, 아직 UI가 반영되지 않은 상태를 검사한다.</p>
+
+      <h3>사례</h3>
+      <p>미니맵 버튼 탭 → 화면 변화 있음(hamming=72) → verification <code>map_opened</code> 실패. 미니맵이 열리는 데 시간이 걸리거나, NPC 대화창이 겹쳐서 분류가 혼동된다.</p>
+
+      <h3>해결</h3>
+      <p>verification을 강제하지 않고 "실패해도 다음 루프에서 자연 복구"로:</p>
+      <pre><code>verification:
+  - id: map_opened
+    method: rule
+    rule: "state_is map-view"
+    on_fail: skip  # 실패해도 다음 루프에서 상태 분류로 확인</code></pre>
+
+      <div class="callout">
+        <div class="callout-title">💡 원칙</div>
+        <p><strong>비동기 UI에서는 verification 타이밍을 강제하지 말라.</strong> "실패해도 다음 루프에서 자연 복구" 패턴을 사용하라.</p>
+      </div>
+
+      <hr>
+
+      <h2>패턴 4: 액션 선택 무한 루프</h2>
+
+      <h3>문제</h3>
+      <p>A precondition 실패 → B 선택 → B precondition 실패 → A 선택 → 영원 반복.</p>
+
+      <h3>사례</h3>
+      <p><code>dismiss-generic</code>(score=200)과 <code>skip-dialog</code>(score=190)가 교차 실행. 두 액션 모두 precondition이 없으면 성공 처리되어 번갈아 선택되고, <code>open-minimap</code>(score=100)은 절대 선택되지 않는다.</p>
+
+      <h3>해결</h3>
+      <pre><code># ❌ 개별 건너뛰기 (교차 실행 발생)
+if last_action == goal["action"] and last_success:
+    skip(goal)
+
+# ✅ 계열 단위 건너뜀
+SKIP_FAMILIES = {"dismiss-generic", "handle-login-popup", "skip-dialog"}
+if last_action in SKIP_FAMILIES and last_success:
+    for goal in goals:
+        if goal["action"] in SKIP_FAMILIES:
+            skip(goal)</code></pre>
+
+      <div class="callout">
+        <div class="callout-title">💡 원칙</div>
+        <p><strong>"성공 처리되는 noop 액션"의 건너뜀 기준은 액션 단위가 아니라 <em>계열 단위</em>로.</strong></p>
+      </div>
+
+      <hr>
+
+      <h2>패턴 5: 게임 UI 중첩으로 인한 좌표 불일치</h2>
+
+      <h3>문제</h3>
+      <p>화면 상태(메인/시설/대화창)에 따라 같은 액션이 다른 곳을 탭한다.</p>
+
+      <h3>사례</h3>
+      <table>
+        <tr><th>화면 상태</th><th>미니맵 버튼</th><th>결과</th></tr>
+        <tr><td>항구 메인</td><td>존재</td><td>탭 성공 ✅</td></tr>
+        <tr><td>교역소 내부</td><td>없음</td><td>다른 UI 건드림 ❌</td></tr>
+        <tr><td>NPC 대화창</td><td>가려짐</td><td>대화창으로 감 ❌</td></tr>
+      </table>
+
+      <h3>해결</h3>
+      <p>"목표 액션을 실행할 수 있는 상태인가?"를 먼저 검사하고, 아니면 복구 액션을 선행:</p>
+      <pre><code>대화창 감지 → skip-dialog → 메인 복귀 확인 → open-minimap</code></pre>
+
+      <div class="callout">
+        <div class="callout-title">💡 원칙</div>
+        <p><strong>게임 자동화에서는 "현재 화면이 목표 액션을 실행할 수 있는 상태인가?"를 항상 검증하라.</strong></p>
+      </div>
+
+      <hr>
+
+      <h2>패턴 6: 환경 의존성 (ADB/화면/게임)</h2>
+
+      <h3>문제</h3>
+      <p>코드는 맞는데 실행 환경에서 실패한다.</p>
+
+      <h3>사례</h3>
+      <table>
+        <tr><th>환경 문제</th><th>증상</th><th>해결</th></tr>
+        <tr><td>ADB 터치 불응</td><td>hamming=0</td><td>재시도 로직</td></tr>
+        <tr><td>화면 꺼짐</td><td>26KB 검은 화면</td><td><code>_ensure_screen_on()</code></td></tr>
+        <tr><td>게임 보안정책 종료</td><td>프로세스 사라짐</td><td>watchdog 자동 재시작</td></tr>
+        <tr><td><code>/tmp</code> 접근 불가</td><td>PermissionError</td><td>workspace 내 임시파일</td></tr>
+        <tr><td>Claude Code proot 제한</td><td>glibc 바이너리 실행 불가</td><td>proot-distro Ubuntu</td></tr>
+      </table>
+
+      <div class="callout">
+        <div class="callout-title">💡 원칙</div>
+        <p><strong>모든 외부 I/O는 실패 가능성을 가정하고 재시도/복구 레이어를 두라.</strong></p>
+      </div>
+
+      <hr>
+
+      <h2>패턴 7: 좌표 하드코딩 vs 동적 탐지</h2>
+
+      <h3>문제</h3>
+      <p>고정 좌표는 화면 레이아웃 변화에 취약하다. 그리고 "좌표가 틀렸다"는 가정에 너무 빨리 앵커링하기 쉽다.</p>
+
+      <h3>사례</h3>
+      <p>미니맵 버튼 좌표를 찾기 위해 <strong>2시간 30분</strong>을 소모:</p>
+      <ol>
+        <li>250px 간격 그리드 스캔 → HIT → 재현 안 됨</li>
+        <li>정밀 스캔 → 다른 HIT → 또 재현 안 됨</li>
+        <li>Claude Code로 현재 화면 분석 → <strong>교역소 내부였음</strong> (미니맵 버튼 자체가 없음)</li>
+      </ol>
+      <p>원래 좌표 (2828,384)가 맞았다. 문제는 좌표가 아니라 화면 상태였다.</p>
+
+      <h3>해결</h3>
+      <pre><code>탐지 우선순위:
+1. 템플릿 매칭 (동적)
+2. LLM 좌표 추론 (준동적)
+3. Fallback 하드코딩 (최후 수단)</code></pre>
+
+      <div class="callout">
+        <div class="callout-title">💡 원칙</div>
+        <p><strong>동적 탐지를 1순위로. 하드코딩은 최후 수단으로.</strong> 그리고 "좌표가 틀렸다"고 가정하기 전에 <em>현재 화면 상태를 먼저 확인하라</em>.</p>
+      </div>
+
+      <hr>
+
+      <h2>문제해결 프로세스: 진단 선행</h2>
+
+      <p>이 패턴들에서 도출한 개선된 문제해결 프로세스:</p>
+
+      <pre><code>실패 발생
+  ↓
+① 현재 화면 상태 파악 (10초)
+  ↓
+② "목표 액션이 가능한 상태인가?"
+  ├─ 아니오 → 상태 복구 먼저
+  └─ 예 → 원인 좁히기
+       ↓
+③ 로그에서 수치 분석 (hamming, confidence, score)
+  ↓
+④ 최소 수정 → 1회 테스트 → 성공이면 커밋</code></pre>
+
+      <h3>체크리스트</h3>
+      <ul>
+        <li>☐ 현재 화면을 먼저 분석했는가?</li>
+        <li>☐ 목표 액션이 가능한 상태인가?</li>
+        <li>☐ 로그에서 수치를 확인했는가?</li>
+        <li>☐ 수정 전에 가설을 적었는가?</li>
+        <li>☐ 1회 테스트로 검증했는가?</li>
+      </ul>
+
+      <div class="callout">
+        <div class="callout-title">🎯 핵심</div>
+        <p><strong>"어떻게 고칠까"보다 "왜 실패했을까"를 먼저.</strong></p>
+        <p>미니맵 좌표 문제는, 현재 화면을 먼저 분석했다면 <strong>2분</strong>에 끝났을 문제를 2시간 30분이나 썼다. "좌표가 틀렸다"는 첫 번째 가설에 너무 빨리 앵커링한 것이 원인이었다.</p>
+      </div>
+
+      <hr>
+
+      <h2>정리</h2>
+
+      <table>
+        <tr><th>패턴</th><th>한 줄 원칙</th></tr>
+        <tr><td>사이드이펙트 숨겨진 버그</td><td>검사와 상태 변경을 분리하라</td></tr>
+        <tr><td>거짓 양성 캐스케이드</td><td>단순 형상은 규칙 기반으로 대체하라</td></tr>
+        <tr><td>타이밍 불일치</td><td>verification을 강제하지 말라</td></tr>
+        <tr><td>액션 선택 무한 루프</td><td>건너뜀 기준을 계열 단위로 확장하라</td></tr>
+        <tr><td>UI 중첩</td><td>액션 전 상태를 검증하라</td></tr>
+        <tr><td>환경 의존성</td><td>모든 외부 I/O에 복구 레이어를 두라</td></tr>
+        <tr><td>하드코딩</td><td>동적 탐지를 1순위로, 진단을 선행하라</td></tr>
+      </table>
+
+      <p>이 패턴들은 게임 자동화뿐만 아니라 RPA, 크롤링, IoT 제어 등 <strong>외부 시스템과 상호작용하는 모든 자동화</strong>에 공통적으로 적용된다. 특히 "진단 선행" 원칙은 가장 비용이 싸면서 가장 큰 효과가 있는 개선이었다.</p>
+
+    </div>
+
+    <div class="article-nav">
+      <a href="https://sfex11.github.io/y700_public/posts/04-wiki-strategy-system.html">
+        <div class="nav-label">← 이전 글</div>
+        <div class="nav-title">64개 액션부터 전략 시스템까지</div>
+      </a>
+    </div>
+
+  </article>
+
+  <footer class="site-footer">
+    <div class="footer-links">
+      <a href="https://github.com/sfex11" target="_blank">GitHub</a>
+      <a href="https://threads.net/@reedo.dev" target="_blank">Threads</a>
+      <a href="https://sfex11.github.io/Myno_public/" target="_blank">1호점</a>
+    </div>
+    <p>© 2026 Myno 2호 젬대버 체인점 — Built with Termux + llama.cpp on Lenovo Y700</p>
+  </footer>
+
+  <script src="../script.js"></script>
+</body>
+</html>
