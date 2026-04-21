@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemma 4 비전 OCR — 471초에서 4초까지 | 젬대버 2호점</title>
+  <meta name="description" content="Gemma 4 E4B vs E2B 비전 OCR 성능 비교. 서버 최적화, 이미지 크기별 인식률, 프롬프트 튜닝으로 471초→4초 달성한 과정.">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="https://sfex11.github.io/y700_public/" class="logo">
+        <span class="logo-icon">⚡</span>
+        젬대버<span class="sub">2호점</span>
+      </a>
+      <nav>
+        <a href="https://sfex11.github.io/y700_public/#work-log">작업일지</a>
+        <a href="https://github.com/sfex11/y700_public" target="_blank">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <article class="article-wrap">
+
+    <div class="article-header">
+      <a href="https://sfex11.github.io/y700_public/#work-log" class="back-link">← 작업일지 목록</a>
+      <span class="article-tag">성능 튜닝</span>
+      <h1>"471초에서 4초까지"<br>Gemma 4 비전 OCR 속도 최적화</h1>
+      <div class="article-meta">
+        <span class="date">2026-04-21</span>
+        <span class="read-time">읽기 6분</span>
+      </div>
+    </div>
+
+    <div class="article-content">
+
+      <p>게임 자동화 봇 젬대버에서 화면 텍스트를 읽기 위해 Gemma 4 비전 모델을 도입했다. 초기 결과는 참담했다 — OCR 한 번에 <strong>7분 51초</strong>. 이를 어떻게 <strong>4초</strong>로 줄였는지 기록한다.</p>
+
+      <h2>환경</h2>
+      <ul>
+        <li>기기: Lenovo Tab Y700 (Adreno 840, Vulkan 1.4)</li>
+        <li>런타임: Termux + llama.cpp (Vulkan GPU)</li>
+        <li>모델: Gemma 4 E4B Q4_K_M (5.1GB) / E2B Q4_K_M (3.46GB)</li>
+        <li>이미지: 게임 스크린샷 3040×1904 (원본)</li>
+        <li>용도: 게임 UI 텍스트 OCR (한국어)</li>
+      </ul>
+
+      <h2>1단계: 기준선 측정 — 왜 이렇게 느린가</h2>
+
+      <p>처음 E4B로 원본 이미지를 보냈더니 <strong>471초</strong> (0.6 tok/s). GPU 스로틀링인지, 이미지가 무거운 건지 원인을 몰랐다.</p>
+
+      <h3>streaming으로 TTFT 분리</h3>
+      <p>응답을 스트리밍으로 받아 첫 토큰 시간(TTFT)과 생성 시간을 분리했다:</p>
+
+      <pre><code>TTFT (이미지 인코딩): 0.3초  ✅ 매우 빠름
+Generation (토큰 생성): 19.3초 ❌ 여기가 병목</code></pre>
+
+      <p>이미지 처리는 0.3초면 끝난다. 문제는 모델이 불필요하게 긴 설명을 생성하는 것. "화면 속 모든 text"라는 프롬프트에 대해 텍스트 외에 분석, 추론, 설명까지 256토큰을 생성하고 있었다.</p>
+
+      <h2>2단계: E4B vs E2B 모델 비교</h2>
+
+      <p>E4B(5.1GB)가 무거워서 E2B(3.46GB)로 교체. GPU 메모리 사용량:</p>
+
+      <pre><code>E4B: ~8.5GB (GPU 메모리 부족으로 간헐적 크래시)
+E2B: 1,285 MiB (여유룸)</code></pre>
+
+      <p>속도는 비슷했지만 인식률에서 차이가 있었다:</p>
+
+      <table>
+        <tr><th></th><th>E4B</th><th>E2B</th></tr>
+        <tr><td>속도</td><td>243~471초</td><td>173~236초</td></tr>
+        <tr><td>인식률</td><td>"위대한 항로의 출석" ✅</td><td>"성장기의 길드 1단계" ❌</td></tr>
+      </table>
+
+      <p>E2B가 빠르지만 정확도가 떨어졌다. 하지만 최적화 후 결과를 보면 의외로 인식률이 개선되었다.</p>
+
+      <h2>3단계: Claude Code에게 조언 구하기</h2>
+
+      <p>원인 분석으로만 시간을 낭리지 않기 위해 Claude Code에 상황을 설명하고 최적화 방법을 물었다. 핵심 조언:</p>
+
+      <ul>
+        <li><code>-ngl 99</code> — 모든 레이어 GPU 오프로드</li>
+        <li><code>-fa on</code> — FlashAttention 활성화</li>
+        <li><code>-ub 512</code> — 물리적 배치 사이즈 증가</li>
+        <li><code>-ctk q8_0 -ctv q8_0</code> — KV 캐시 8비트 양자화</li>
+        <li><code>--cache-reuse 256</code> — 프롬프트 캐시 재사용</li>
+        <li><strong>이미지를 896×896으로 미리 줄이면 5~10배 빨라진다</strong></li>
+      </ul>
+
+      <h2>4단계: 이미지 크기별 인식률 비교</h2>
+
+      <p>최적화된 서버에서 5가지 크기로 테스트:</p>
+
+      <table>
+        <tr><th>크기</th><th>속도</th><th>t/s</th><th>핵심 텍스트 인식</th></tr>
+        <tr><td>720×450</td><td>25초</td><td>9.4</td><td>6/8 ⭐</td></tr>
+        <tr><td>896×560</td><td>19초</td><td>13.4</td><td>2/8</td></tr>
+        <tr><td>1280×800</td><td>27초</td><td>9.7</td><td>2/8</td></tr>
+        <tr><td>1920×1200</td><td>25초</td><td>9.5</td><td>2/8</td></tr>
+        <tr><td>원본 3040×1904</td><td>22초</td><td>13.3</td><td>4/8</td></tr>
+      </table>
+
+      <p>의외로 720×450이 인식률이 가장 좋았다. 큰 이미지가 오히려 노이즈를 유발하는 것 같다.</p>
+
+      <h2>5단계: 프롬프트 최적화 — 결정적 한 방</h2>
+
+      <p>TTFT 분석에서 병목이 이미지 처리가 아닌 <strong>토큰 생성</strong>이라는 걸 알았다. 프롬프트를 바꿨다:</p>
+
+      <pre><code># Before
+"화면 속 모든 text"
+
+# After
+"이미지의 텍스트만 줄바꿈 유지해 추출. 설명/추론 금지."
+max_tokens: 128 (이전 1024)</code></pre>
+
+      <table>
+        <tr><th></th><th>Before</th><th>After</th></tr>
+        <tr><td>속도</td><td>25초</td><td><strong>4초</strong></td></tr>
+        <tr><td>gen tokens</td><td>256</td><td>45</td></tr>
+        <tr><td>인식률</td><td>6/8</td><td>6/8</td></tr>
+      </table>
+
+      <p><strong>25초 → 4초.</strong> 이미지 크기도, 서버 옵션도 바꾸지 않았다. 프롬프트만 바꿨다.</p>
+
+      <h2>최종 서버 옵션</h2>
+
+      <pre><code>llama-server \
+  -m google_gemma-4-E2B-it-Q4_K_M.gguf \
+  --mmproj mmproj-gemma-4-E2B-it-f16.gguf \
+  -ngl 99 -fa on -c 2048 -b 2048 -ub 512 \
+  -ctk q8_0 -ctv q8_0 -t 6 \
+  --cache-reuse 256 -np 1</code></pre>
+
+      <h2>요약</h2>
+
+      <table>
+        <tr><th>단계</th><th>속도</th><th>비고</th></tr>
+        <tr><td>E4B 원본, 미최적화</td><td>471초</td><td>0.6 tok/s</td></tr>
+        <tr><td>E2B + 서버 최적화</td><td>173초</td><td>1.4 tok/s</td></tr>
+        <tr><td>E2B + 720×450</td><td>25초</td><td>9.4 tok/s</td></tr>
+        <tr><td>E2B + 프롬프트 최적화</td><td><strong>4초</strong></td><td>11.2 tok/s</td></tr>
+      </table>
+
+      <h2>배운 것</h2>
+
+      <ol>
+        <li><strong>병목 분석 먼저.</strong> 스트리밍으로 TTFT와 generation 시간을 분리하면 병목이 바로 보인다. "이미지가 무거워서 느리다"는 가설이 틀렸다.</li>
+        <li><strong>프롬프트가 속도를 결정한다.</strong> "모든 텍스트를 나열해줘"는 256토큰 설명을 유도한다. "추출만 해. 설명 금지"로 45토큰으로 줄였다.</li>
+        <li><strong>큰 이미지가 항상 좋은 건 아니다.</strong> 720×450이 원본(3040×1904)보다 인식률이 좋았다.</li>
+        <li><strong>E2B가 E4B보다 실용적이다.</strong> 1/3 크기, GPU 메모리 1/6, 속도 비슷. 인식률은 프롬프트로 보정 가능.</li>
+        <li><strong>Claude에게 물어봐라.</strong> 이미 해결한 사람에게 물어보는 게 가장 빠르다.</li>
+      </ol>
+
+      <p>다음 단계: 이 OCR 파이프라인을 젬대버 런타임에 통합. 4초면 게임 자동화 루프에 충분히 실시간으로 사용할 수 있다.</p>
+
+    </div>
+
+  </article>
+
+  <footer class="site-footer">
+    <p>© 2026 젬대버 2호점 · Powered by llama.cpp + Vulkan on Y700</p>
+  </footer>
+
+</body>
+</html>

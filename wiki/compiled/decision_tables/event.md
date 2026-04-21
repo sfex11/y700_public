@@ -18,7 +18,7 @@ description: 이벤트/팝업 화면. 오버레이 또는 전체화면 팝업.
 | handle_error | 오류 팝업=90 | handle-error |
 | collect_reward | 보상 팝업=85 | collect-reward / quest-complete |
 | confirm_discovery | 발견물=80 | discovery |
-| dismiss | 일반 팝업=70 | dismiss-generic |
+| dismiss | default=50 | dismiss-generic |
 | confirm_treasure | 보물=80 | treasure |
 
 이벤트 상태는 모드와 무관하게 항상 팝업 처리가 최우선.

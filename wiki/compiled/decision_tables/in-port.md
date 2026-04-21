@@ -21,14 +21,19 @@ description: 항구에 체류 중. 모든 시설 접근 가능.
 ## 모드별 goal 점수
 
 ### BOOTSTRAP
-| goal | score_if | action |
+|| goal | score_if | action |
 |------|----------|--------|
-| dismiss_popup | always=80 | dismiss-generic |
-| assess | popups_done=90 | screenshot → state 분류 |
+| dismiss_popup | always=200 | dismiss-generic |
+| skip_dialog | always=190 | skip-dialog |
+| depart_office | harbor_reached=100 | tap-departure-office |
+| open_map | NOT harbor_reached=100 | open-minimap |
 
 ### MONEY_MAKING
-| goal | score_if | action |
+|| goal | score_if | action |
 |------|----------|--------|
+| dismiss_popup | always=200 | dismiss-generic |
+| skip_dialog | always=190 | skip-dialog |
+| depart_office | harbor_reached=100 | tap-departure-office |
 | sell_high | cargo_has_goods AND 시세≥110%=80 | sell-goods |
 | buy_cheap | cargo_ratio<90% AND gold>5000 AND 시세≤90%=75 | buy-goods |
 | check_market | 시세_미확인=70 | check-prices |
@@ -37,11 +42,15 @@ description: 항구에 체류 중. 모든 시설 접근 가능.
 | daily_quest | daily_quest_pending=50 | collect-daily-quest |
 
 ### RECOVERY
-| goal | score_if | action |
+|| goal | score_if | action |
 |------|----------|--------|
-| repair | durability<80%=100 | repair |
-| supply | supply_water<80% OR supply_food<80%=95 | supply |
-| emergency_sell | gold<3000=90 | sell-goods |
+| dismiss_popup | always=200 | dismiss-generic |
+| skip_dialog | always=190 | skip-dialog |
+| depart_office | harbor_reached=100 | tap-departure-office |
+| open_map | NOT harbor_reached=100 | open-minimap |
+| repair | durability<80% AND NOT harbor_reached=95 | repair |
+| supply | (supply_water<80% OR supply_food<80%) AND NOT harbor_reached=90 | supply |
+| emergency_sell | gold<3000=80 | sell-goods |
 | heal | crew_fatigue>70%=60 | check-inn |
 
 ### GROWTH
