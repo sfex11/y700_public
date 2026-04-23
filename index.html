@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>젬대버 체인점 — Myno 2호</title>
+  <meta name="description" content="Termux + 로컬 LLM으로 스마트폰 게임을 자동화하는 AI 에이전트 프로젝트. Y700 태블릿에서 Gemma 4를 구동하는 젬대버 작업일지.">
+  <meta property="og:title" content="젬대버 체인점 — Myno 2호">
+  <meta property="og:description" content="Termux + 로컬 LLM으로 스마트폰을 제어하는 AI 에이전트">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="https://sfex11.github.io/y700_public/" class="logo">
+        <span class="logo-icon">⚡</span>
+        젬대버<span class="sub">2호점</span>
+      </a>
+      <nav>
+        <a href="https://sfex11.github.io/y700_public/#work-log" class="active">작업일지</a>
+        <a href="https://github.com/sfex11/y700_public" target="_blank">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-badge">⚡ Myno 2호 체인점</div>
+    <h1>Termux에서 스마트폰을<br><span class="highlight">로컬 LLM로 제어한다</span></h1>
+    <p class="hero-desc">API 키 없이, 인터넷 없이. Y700 태블릿 위에서 Gemma 4가 화면을 보고 터치하고, 게임을 플레이한다.</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="num" data-suffix="x">33</div>
+        <div class="label">GPU 가속 배율</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num" data-suffix="s">3.2</div>
+        <div class="label">Vision 응답</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num" data-suffix="">0</div>
+        <div class="label">API 키 사용</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="work-log">
+    <h2 class="section-title"><span class="icon">📝</span> 작업일지</h2>
+    <div class="posts-grid">
+
+      <a href="https://sfex11.github.io/y700_public/posts/01-llm-phone-agent-poc1.html" class="post-card">
+        <div class="post-card-meta">
+          <span class="date">2026-04-13</span>
+          <span class="post-card-tag">POC v1</span>
+        </div>
+        <h3>"핸드폰 화면이 보여" — Termux에서 AI 에이전트 첫 동작</h3>
+        <p>PokeClaw에서 영감을 받아, Termux + ADB + llama.cpp로 스마트폰을 제어하는 로컬 AI 에이전트 POC를 만들었다. Gemma 4가 내 화면을 캡처하고, 텔레그램으로 지시를 받아 직접 터치까지. API 키 제로.</p>
+      </a>
+
+      <a href="https://sfex11.github.io/y700_public/posts/02-screen-recognition-poc2.html" class="post-card">
+        <div class="post-card-meta">
+          <span class="date">2026-04-13</span>
+          <span class="post-card-tag">POC v2</span>
+        </div>
+        <h3>"화면이 바뀌었다" — 변화 감지부터 템플릿 매칭까지</h3>
+        <p>에이전트가 화면 변화를 스스로 감지하도록 pHash를 구현했다. uiautomator가 안 통하는 대항해시대 온라인은 템플릿 매칭으로 우회. OpenCV 없이 PIL+numpy만으로.</p>
+      </a>
+
+      <a href="https://sfex11.github.io/y700_public/posts/03-vulkan-gpu-speedup.html" class="post-card">
+        <div class="post-card-meta">
+          <span class="date">2026-04-13</span>
+          <span class="post-card-tag">Vulkan</span>
+        </div>
+        <h3>"106초가 3초가 됐다" — Adreno 840 Vulkan GPU 가속</h3>
+        <p>CPU 전용 추론 106초 → Vulkan 가속으로 3.2초. llama.cpp에 GPU 백엔드를 붙이는 과정에서 Android Bionic의 spawn.h부터 shader 컴파일까지 겪은 삽질 기록.</p>
+      </a>
+
+      <a href="https://sfex11.github.io/y700_public/posts/07-automated-recovery-and-metrics.html" class="post-card">
+        <div class="post-card-meta">
+          <span class="date">2026-04-23</span>
+          <span class="post-card-tag">자동화</span>
+        </div>
+        <h3>"분류가 틀렸다고 가정하라" — 자가 복구 루프와 성능 메트릭</h3>
+        <p>연속 실패 시 Codex 진단, Wiki 자가 개선, 장단기 목표 관리, 인식/판단/제어 3단계 메트릭 체계 도입.</p>
+      </a>
+
+      <a href="https://sfex11.github.io/y700_public/posts/06-vision-ocr-speedup.html" class="post-card">
+        <div class="post-card-meta">
+          <span class="date">2026-04-21</span>
+          <span class="post-card-tag">성능 튜닝</span>
+        </div>
+        <h3>"471초에서 4초까지" — Gemma 4 비전 OCR 속도 최적화</h3>
+        <p>E4B vs E2B 비교, 이미지 크기별 인식률, 프롬프트 튜닝으로 118배 빠른 OCR 달성. TTFT 분석으로 병목 파악하는 법.</p>
+      </a>
+
+      <a href="https://sfex11.github.io/y700_public/posts/05-debugging-patterns.html" class="post-card">
+        <div class="post-card-meta">
+          <span class="date">2026-04-19</span>
+          <span class="post-card-tag">디버깅</span>
+        </div>
+        <h3>"2시간 30분이 10분이 될 수 있었다" — 게임 자동화에서 배운 7가지 문제해결 패턴</h3>
+        <p>사이드이펙트 버그, 거짓 양성 캐스케이드, 타이밍 불일치, 무한 루프, UI 중첩, 환경 의존성, 하드코딩. 외부 시스템 자동화에서 겪은 버그와 해결 패턴 정리.</p>
+      </a>
+
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="footer-links">
+      <a href="https://github.com/sfex11" target="_blank">GitHub</a>
+      <a href="https://threads.net/@reedo.dev" target="_blank">Threads</a>
+      <a href="https://sfex11.github.io/Myno_public/" target="_blank">1호점</a>
+    </div>
+    <p>© 2026 Myno 2호 젬대버 체인점 — Built with Termux + llama.cpp on Lenovo Y700</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

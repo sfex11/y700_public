@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>자가 복구 루프와 성능 메트릭 | 젬대버 2호점</title>
+  <meta name="description" content="연속 실패 시 Codex 진단, Wiki 자가 개선, 장단기 목표 관리, 인식/판단/제어 3단계 메트릭 체계를 도입한 과정.">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="https://sfex11.github.io/y700_public/" class="logo">
+        <span class="logo-icon">⚡</span>
+        젬대버<span class="sub">2호점</span>
+      </a>
+      <nav>
+        <a href="https://sfex11.github.io/y700_public/#work-log">작업일지</a>
+        <a href="https://github.com/sfex11/y700_public" target="_blank">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <article class="article-wrap">
+
+    <div class="article-header">
+      <a href="https://sfex11.github.io/y700_public/#work-log" class="back-link">← 작업일지 목록</a>
+      <span class="article-tag">자동화</span>
+      <h1>"분류가 틀렸다고 가정하라"<br>자가 복구 루프와 성능 메트릭 도입</h1>
+      <div class="article-meta">
+        <time>2026-04-23</time>
+        <span class="tag">Codex 연동</span>
+        <span class="tag">메트릭</span>
+        <span class="tag">목표 관리</span>
+      </div>
+    </div>
+
+    <div class="article-body">
+
+      <h2 id="problem">문제: 고정관념에 갇힌 봇</h2>
+      <p>런타임이 <code>map-view</code>라고 확신하고 항구 아이콘을 찾지 못해 무한 루프에 빠졌다. 분류기가 틀렸다는 가능성을 전혀 고려하지 않았다. 같은 액션을 15회 반복한 뒤 런타임이 스스로 중단했다.</p>
+      <p>회장님이 핵심을 짚었다: <strong>"연속 실패하면 현재 상황 분류가 없던 거라고 생각해라"</strong></p>
+
+      <h2 id="lesson1">교훈 1: 내 판단을 검증하지 마, 다른 눈이 필요하다</h2>
+      <p>X버튼 좌표 (653, 63)이 Codex 분석 결과라 무비판적으로 수용했다. 실제로는 픽셀 스캔 결과 (686, 12)이 올바른 위치였다. LLM 분석 결과를 검증 없이 좌표로 사용하면 안 된다.</p>
+      <p>원본 해상도에서 픽셀 스캔으로 밝은 클러스터를 찾고, 그 결과를 Codex 결과와 비교하는 과정이 필수다.</p>
+
+      <h2 id="codex-diagnose">Codex 진단 루프</h2>
+      <p>연속 5회 실패 → 루프 일시정지 → Codex에게 현재 스크린샷 전달:</p>
+      <pre><code>Codex에게: "봇이 {state}라고 가정하고 {action}을 시도했으나 5+회 실패.
+분류가 틀렸다. 실제 상태와 탭할 위치를 JSON으로 응답해라."
+→ {"actual_state":"...", "tap_x":686, "tap_y":12}
+→ 해당 좌표로 탭 → 화면 변화 확인 → 성공 시 카운터 리셋</code></pre>
+      <p>10회 실패 시 Wiki 자가 개선도 실행: decision tables와 recognition map을 Codex가 직접 수정하고 텔레그램으로 diff를 보고한다.</p>
+
+      <h2 id="bug-fix">고치면서 발견한 버그들</h2>
+      <ul>
+        <li><strong>precondition 실패 → 성공 처리</strong>: <code>skip-dialog</code>가 precondition을 통과 못 했는데 "팝업 없음 → 성공"으로 기록. 이후 "직전 성공 액션 건너뜀"이 트리거되어 아무것도 안 하는 무한 루프.</li>
+        <li><strong>건너뜀 로직</strong>: 실제 화면 변화가 확인된 경우만 건너뛰도록 수정. 아니면 <code>consecutive_fails</code>를 증가시켜 Codex 진단으로 이어지게.</li>
+        <li><strong>Codex git 체크</strong>: <code>--skip-git-repo-check</code> 누락으로 Codex가 실행조차 안 되는 문제.</li>
+        <li><strong>/tmp 권한</strong>: Termux에서 <code>/tmp</code>에 쓰기 불가 → <code>state_dir</code> 내부로 변경.</li>
+      </ul>
+
+      <h2 id="goals">장기/단기 목표 관리</h2>
+      <p>봇이 "왜" 돌아가는지를 알아야 의미 있는 행동을 선택할 수 있다:</p>
+      <pre><code>goals.json:
+{
+  "long_term": [
+    {"id":"lt1", "description":"리스본~세비야 교역 10회", "progress":0, "target":10}
+  ],
+  "short_term": [
+    {"id":"st1", "description":"출항 오피스 진입",
+     "steps":["항구 메인 확보","출항 오피스 탭"], "current_step":0}
+  ]
+}</code></pre>
+      <p>텔레그램 <code>/goals</code> 명령어로 진행도 조회. 주기적 상태 보고에도 목표가 포함된다.</p>
+
+      <h2 id="metrics">인식/판단/제어 3단계 메트릭</h2>
+      <p>파이프라인을 3단계로 분리하여 어디서 병목이 발생하는지 측정:</p>
+      <table>
+        <thead><tr><th>단계</th><th>질문</th><th>지표</th></tr></thead>
+        <tbody>
+          <tr><td><strong>인식</strong></td><td>"이 화면이 뭔가?"</td><td>분류 안정성, 분류 속도</td></tr>
+          <tr><td><strong>판단</strong></td><td>"무엇을 해야 하나?"</td><td>precondition 실패율, 검증 통과율</td></tr>
+          <tr><td><strong>제어</strong></td><td>"탭이 제대로 먹혔나?"</td><td>화면 변화율, 목표 달성율</td></tr>
+        </tbody>
+      </table>
+      <p>매 루프마다 <code>loop_metrics</code> 테이블에 기록. <code>/metrics</code> 명령어로 최근 50루프 집계 조회.</p>
+
+      <h2 id="screenshot-pipeline">샘플 수집 파이프라인</h2>
+      <p>상태별로 최대 20개 스크린샷 자동 저장 (MD5 중복 제거). 새 상태 감지 시 분석 스크립트로 클릭 영역 추출, 텔레그램으로 결과 이미지 전송.</p>
+
+      <h2 id="key-takeaway">핵심</h2>
+      <blockquote>
+        <p>자동화 봇이 막혔을 때, "액션을 바꿔라"가 아니라 <strong>"내가 보는 세상이 틀릴 수 있다"</strong>고 가정하는 것이 진짜 자가 복구다. 분류 신뢰 → 액션 선택 → 결과 검증 → 신뢰도 조정. 이 순환이 자가 학습의 핵심이다.</p>
+      </blockquote>
+
+    </div>
+
+  </article>
+
+  <footer class="site-footer">
+    <p>젬대버 2호점 — 대항해시대 오리진 자동화 프로젝트</p>
+  </footer>
+
+</body>
+</html>
