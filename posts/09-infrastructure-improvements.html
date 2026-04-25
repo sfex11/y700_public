@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title="감독관에 채찍질과 목표 자동 생성 | 젬대버 2호점">
+  <meta name="description" content="텔레그램에서 장기목표 수정, /review에 지시사항 전달, 대기 관찰 모드, E2B 서버 메모리 확보, Watchdog 비활성화 — 젬대버 인프라 개선 업무일지.">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="https://sfex11.github.io/y700_public/" class="logo">
+        <span class="logo-icon">⚡</span>
+        젬대버<span class="sub">2호점</span>
+      </a>
+      <nav>
+        <a href="https://sfex11.github.io/y700_public/#work-log">작업일지</a>
+        <a href="https://github.com/sfex11/y700_public" target="_blank">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <article class="article-wrap">
+
+    <div class="article-header">
+      <a href="https://sfex11.github.io/y700_public/#work-log" class="back-link">← 작업일지 목록</a>
+      <span class="article-tag">업무일지</span>
+      <h1>감독관에 채찍질과 목표 자동 생성<br>인프라 개선으로 안정성 확보</h1>
+      <p class="article-meta">2026-04-25 · 젬대버 런타임</p>
+    </div>
+
+    <div class="article-body">
+
+      <h2 id="summary">한 줄 요약</h2>
+      <p>감독관(Codex)이 장기 목표를 보고 단기 목표를 자동 생성하게 하고, 메모리 부족 문제를 E2B 서버 임시 중지로 해결했다. 대화/이벤트 화면에서 무작정 클릭하지 않고 관찰하는 모드도 추가.</p>
+
+      <h2 id="motivation">동기</h2>
+      <p>젬대버가 돌아가긴 하는데, 제어하기가 불편했다. 목표를 수정하려면 코드를 고쳐야 하고, 감독관에게 구체적인 지시를 내릴 방법이 없었다. 게다가 메모리 부족으로 Codex 진단이 불가한 상황이 반복됐다.</p>
+
+      <h2 id="goals-telegram">1. 텔레그램에서 목표 관리</h2>
+      <p><code>/setgoal</code> 명령어를 추가했다:</p>
+      <pre><code>/setgoal long [{"id":"미니맵탐색","description":"미니맵 장소 화면 수집","target":10}]
+/setgoal short []
+/setgoal long []  # 장기 목표 전체 삭제</code></pre>
+      <p>이전에는 런타임 시작 시 goals.json을 한 번만 읽었는데, <strong>매 루프마다 리로드</strong>하도록 변경. 텔레그램에서 수정하면 즉시 다음 루프에 반영된다.</p>
+      <p>JSON 직접 입력이 불편해서, 결국 "와칠아 목표 수정해줘"라고 부탁하면 되는 걸로. 봇은 그냥 편의용.</p>
+
+      <h2 id="review-instruction">2. /review에 지시사항 전달</h2>
+      <p>감독관 리뷰 요청 시 구체적인 지시를 줄 수 있게 했다:</p>
+      <pre><code>/review 미니맵이라고 띄우는 화면은 미니맵이 아니야. 정확한 미니맵을 찾아라</code></pre>
+      <p>지시사항은 프롬프트에 <strong>"## 추가 지시"</strong> 섹션으로 삽입되고, supervisor-review.md에 <strong>"추가 지시가 있으면 최우선으로 처리하라"</strong>는 규칙도 추가했다.</p>
+
+      <h2 id="auto-short-term">3. 단기 목표 자동 생성</h2>
+      <p>감독관 프롬프트에 새 지시를 추가:</p>
+      <blockquote>
+        장기 목표를 달성하기 위해 현재 단기 목표가 없거나 부적절하면, 장기 목표에 맞는 새 단기 목표를 goals.json에 직접 생성하라 (action:/state:/mode:/fact: prefix 규격 사용)
+      </blockquote>
+      <p>Codex가 장기 목표를 읽고, 달성을 위한 단기 목표를 스스로 생성/수정하게 된다.</p>
+
+      <h2 id="observe-mode">4. 대기 관찰 모드</h2>
+      <p>기존 문제: 대화/이벤트 화면에서 매 루프 클릭하면 대화가 꼬이거나 연출이 끊긴다.</p>
+      <p>해결: DIALOG, EVENT, LOADING 상태에서는 <strong>2루프 동안 아무 동작 없이 3초씩 대기</strong>한다. 관찰 종료 후에야 액션을 진행한다.</p>
+      <pre><code>루프 #1: event 상태 → 관찰 중 (1/2): 아무 동작 없이 대기
+루프 #2: event 상태 → 관찰 중 (2/2): 아무 동작 없이 대기
+루프 #3: event 상태 → 관찰 종료: 액션 진행</code></pre>
+      <p>간단하지만 효과적. 대화 텍스트가 진행 중일 때 방해하지 않는다.</p>
+
+      <h2 id="review-pause">5. /review 시 루프 일시정지</h2>
+      <p>이전에는 /review가 백그라운드 태스크로 실행돼서 루프와 동시에 돌았다. 이제 <code>await</code>로 변경:</p>
+      <ul>
+        <li>루프 일시정지 → "⏸️ 루프 일시정지, 감독관 리뷰 시작..."</li>
+        <li>E2B 서버 중지 (~4.5GB 메모리 확보)</li>
+        <li>Codex 실행</li>
+        <li>E2B 서버 자동 재시작</li>
+        <li>"▶️ 루프 재개"</li>
+      </ul>
+
+      <h2 id="memory">6. 메모리 부족 해결</h2>
+      <p>디바이스 RAM 15GB 중 300MB 남는 상황이 자주 발생. 원인:</p>
+      <ul>
+        <li>E2B 서버가 ~4.5GB 점유</li>
+        <li>Codex 진단 시 추가 메모리 필요</li>
+        <li>이전에는 메모리 부족 → 60초 대기 → 다시 부족 → 무한 루프</li>
+      </ul>
+      <p>해결: 메모리 부족 시 E2B 서버를 중지하고 Codex 진단 후 재시작. 그래도 부족하면 fails를 리셋하고 계속 진행 (교착 방지).</p>
+
+      <h2 id="watchdog">7. Watchdog 비활성화</h2>
+      <p>Watchdog이 런타임을 죽여도 안 죽고, 죽여도 다시 살려내서 재시작이 불가능했다. 런타임 자체에 recovery.py가 있으니 watchdog은 불필요.</p>
+      <p>그리고 watchdog이 오래된 ADB 주소(40347)를 사용하고 있었다.</p>
+
+      <h2 id="bugs">8. 버그 수정</h2>
+      <ul>
+        <li><code>template_matcher.match()</code> → <code>template_matcher.match_template()</code> — 리팩토링 때 메서드명 잘못 복원</li>
+        <li><code>/review</code> 명령어 인자 미처리 — <code>cmd == "/review"</code> → <code>cmd.startswith("/review")</code></li>
+        <li><code>__pycache__</code>에 구버전 캐시가 남아 수정이 반영 안 되는 문제</li>
+      </ul>
+
+      <h2 id="lesson">배운 것</h2>
+      <ul>
+        <li><strong>__pycache__는 적이다.</strong> 코드를 고쳐도 캐시 때문에 구버전이 실행된다. 수정 후 반드시 캐시 삭제.</li>
+        <li><strong>Watchdog은 자신이 지켜야 할 대상보다 더 오래 산다.</strong> 런타임을 죽여도 watchdog이 살려내서, watchdog을 먼저 죽여야 한다.</li>
+        <li><strong>메모리 확보는 선제적으로.</strong> 무거운 작업 전에 미리 확보하고, 확보 실패 시 폴백이 있어야 한다.</li>
+        <li><strong>"기다리는 것"도 액션이다.</strong> 모든 문제를 클릭으로 풀려고 하지 말고, 때로는 관찰이 정답이다.</li>
+      </ul>
+
+    </div>
+
+    <div class="article-footer">
+      <a href="https://sfex11.github.io/y700_public/#work-log" class="back-link">← 작업일지 목록</a>
+    </div>
+
+  </article>
+
+</body>
+</html>
