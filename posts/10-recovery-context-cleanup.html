@@ -22,13 +22,16 @@
     </div>
   </header>
 
-  <main>
-    <article class="post">
-      <div class="post-header">
-        <h1>행동으로 입증된 것만 남긴다</h1>
-        <time datetime="2026-04-29">2026-04-29</time>
-      </div>
-      <div class="post-body">
+  <article class="article-wrap">
+
+    <div class="article-header">
+      <a href="https://sfex11.github.io/y700_public/#work-log" class="back-link">← 작업일지 목록</a>
+      <span class="article-tag">업무일지</span>
+      <h1>행동으로 입증된 것만 남긴다<br>Codex 수정 규칙의 자동 검증</h1>
+      <p class="article-meta">2026-04-29 · 젬대버 런타임</p>
+    </div>
+
+    <div class="article-body">
 
       <h2 id="summary">한 줄 요약</h2>
       <p>런타임이 "정상 액션 선택 없이 Codex 진단만 반복"하는 현상을 분석했다. 원인은 OCR 오판이 아니라 <strong>복구 정책 문맥 오염 + 실행 경로 결손 + 너무 좁은 precondition</strong>이었다. Codex가 수정한 규칙은 액션으로 증명되지 않으면 자동 rollback 되도록 개선했다.</p>
@@ -89,7 +92,7 @@ def back(self):
 3. 런타임이 액션 실행
 4. 후속 화면 재인식 → 효과 판정
 5. 효과 있음 → 수정 유지
-   효과 없음 → 규칙 파일 스냅샵으로 rollback</code></pre>
+   효과 없음 → 규칙 파일 스냅샷으로 rollback</code></pre>
       <p>이 철학의 핵심: <strong>Codex는 제안권만 있다. 반영은 런타임이 결정한다.</strong></p>
       <p>잘못된 일반화가 문서에 영구적으로 남는 것을 방지한다. "어제 Codex가 이렇게 바꿨는데 왜 안 되지?"를 반복하지 않게 된다.</p>
       <p>rollback 대상 파일:</p>
@@ -143,12 +146,13 @@ def back(self):
         <li>약한 모델/강한 모델 역할 재분리 검토 — 약한 모델은 직접 액션만, 강한 모델은 문서 수정</li>
       </ul>
 
-      </div>
-    </article>
-  </main>
+    </div>
 
-  <footer>
-    <p>&copy; 2026 젬대버 2호점. Powered by AI + Coffee.</p>
-  </footer>
+    <div class="article-footer">
+      <a href="https://sfex11.github.io/y700_public/#work-log" class="back-link">← 작업일지 목록</a>
+    </div>
+
+  </article>
+
 </body>
 </html>
