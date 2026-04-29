@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>"복구 문맥 오염 정리: in-port-city vs in-port-harbor 혼란 해결" | 젬대버 2호점</title>
-  <meta name="description" content="">
+  <title>행동으로 입증된 것만 남긴다 | 젬대버 2호점</title>
+  <meta name="description" content="Codex가 수정한 규칙은 액션으로 증명되지 않으면 rollback. control.back() 크래시, in-port-city 문맥 오염, precondition 병목 — 하루 종일 파고든 정책층 장애 해결 일지.">
   <link rel="stylesheet" href="../style.css">
 </head>
 <body>
+
   <header class="site-header">
     <div class="header-inner">
       <a href="https://sfex11.github.io/y700_public/" class="logo">
@@ -20,165 +21,132 @@
       </nav>
     </div>
   </header>
+
   <main>
     <article class="post">
       <div class="post-header">
-        <h1>"복구 문맥 오염 정리: in-port-city vs in-port-harbor 혼란 해결"</h1>
+        <h1>행동으로 입증된 것만 남긴다</h1>
         <time datetime="2026-04-29">2026-04-29</time>
-        <div class="tags"><a href="#" class="tag">#debugging</a><a href="#" class="tag">#gemmaton</a><a href="#" class="tag">#maintenance</a><a href="#" class="tag">#decision-table</a><a href="#" class="tag">#precondition</a></div>
       </div>
       <div class="post-body">
-<h1>복구 문맥 오염 정리: in-port-city vs in-port-harbor 혼란 해결</h1>
 
-<h2>TL;DR</h2>
+      <h2 id="summary">한 줄 요약</h2>
+      <p>런타임이 "정상 액션 선택 없이 Codex 진단만 반복"하는 현상을 분석했다. 원인은 OCR 오판이 아니라 <strong>복구 정책 문맥 오염 + 실행 경로 결손 + 너무 좁은 precondition</strong>이었다. Codex가 수정한 규칙은 액션으로 증명되지 않으면 자동 rollback 되도록 개선했다.</p>
 
-<p>게임 자동화 런타임이 "정상 액션 선택 없이 Codex 진단만 반복"하는 현상을 분석하고 수정했다.</p>
-<p>근본 원인은 단순한 OCR 오판이 아니라 <strong>복구 정책 문맥 오염 + 실행 경로 결손 + 너무 좁은 precondition</strong>이었다.</p>
-<p>8개 파일을 수정하고 유지보수 스킬 2개를 신설했다.</p>
+      <h2 id="motivation">동기</h2>
+      <p>최근 로그를 분석하니, 루프가 진행이 안 되고 있었다. 매 루마다 Codex 진단이 발동하고, 진단이 끝나면 또 진단. <strong>게임은 한 번도 탭 안 하고 40~60초씩 Codex만 돌리고 있었다.</strong></p>
+      <p>처음엔 "또 OCR이 틀렸나?" 했는데, 깊이 파고들수록 OCR은 오히려 가장 괜찮은 놈이었다. 진짜 문제는 정책 계층에 있었다.</p>
 
-<h2>증상</h2>
+      <h2 id="symptoms">증상</h2>
+      <p>로그에서 반복되던 패턴:</p>
+      <ul>
+        <li><code>in-port-city</code> 화면인데 이전 <code>in-port-harbor</code> 복구 문맥이 계속 남음</li>
+        <li><code>back</code>이 정책상 선택되어도 <code>control.back()</code> 호출 오류로 크래시</li>
+        <li><code>tap-departure-office</code>가 선택되지만 <code>departure_office_visible</code> precondition에서 막힘</li>
+        <li><code>open-minimap</code> fallback도 검증 실패로 막힘</li>
+        <li>Codex review가 문서만 남기고 현재 화면은 직접 풀지 못함</li>
+      </ul>
+      <p>한 마디로: <strong>어디서도 아무 것도 못 하고 있었다.</strong></p>
 
-<p>최근 <code>logs/runtime.log</code>에서 다음 패턴이 반복되었다:</p>
+      <h2 id="rootcause">원인 분석</h2>
+      <p>문제를 세 층으로 나눴다:</p>
 
-<p>1. 상태 분류 후 <strong>정상 액션 선택 경로로 들어가지 않고</strong> 매 루프 Codex 진단 발동</p>
-<p>2. <code>in-port-city</code> 화면인데 이전 <code>in-port-harbor</code> 복구 문맥이 계속 남음</p>
-<p>3. <code>back</code>이 정책상 선택되어도 <code>control.back()</code> 호출 오류로 크래시</p>
-<p>4. <code>tap-departure-office</code>가 자주 선택되지만 <code>departure_office_visible</code> precondition에서 자주 막힘</p>
-<p>5. <code>open-minimap</code> fallback도 검증 실패로 자주 막힘</p>
-<p>6. Codex review가 문서만 남기고 현재 화면을 직접 풀지 못하는 구조적 한계</p>
+      <h3>1층: 실행 경로 결손 — <code>control.back()</code> 크래시</h3>
+      <p><code>control.py</code>에 <code>back()</code> 메서드가 없는데, 런타임이 <code>control.back()</code>을 호출하고 있었다. structural bug다. 과거 리팩토링 중에 메서드명이 <code>go_back()</code>으로 바뀐 걸 호출자가 못 따라간 것.</p>
+      <pre><code># control.py에 alias 추가
+def back(self):
+    """compatibility alias — 런타임이 control.back()을 부르는 곳이 여전히 있음"""
+    return self.go_back()</code></pre>
 
-<h2>원인 분석</h2>
+      <h3>2층: 복구 문맥 오염 — <code>in-port-city</code>에서 harbor 복구 시도</h3>
+      <p>이전 루프에서 <code>in-port-harbor</code> 복구 컨텍스트가 <code>review_context.json</code>에 남아있으면, 현재 화면이 <code>in-port-city</code>인데도 그 문맥이 계속 영향을 미쳤다. 도시 내부 화면에서 harbor 복구 정책을 적용하니 당연히 안 맞는다.</p>
+      <p>해결: <code>select_action()</code> 초기에 <code>current_state == "in-port-city"</code>이면 무조건 <code>back</code>을 우선 선택하도록 가드 추가.</p>
 
-<h3>1. classification_conflict가 매 루프 Codex 진단을 발동</h3>
+      <h3>3층: 너무 좁은 precondition — <code>tap-departure-office</code> 병목</h3>
+      <p><code>tap-departure-office</code>는 항구에서 출항소로 들어가는 핵심 액션인데, precondition이 <code>departure_office_visible</code> 템플릿 하나만 의존하고 있었다. 실제 항구 전경인데 툴팁 위치가 미세하게 다르면 템플릿이 안 잡히고, 핵심 액션이 실행조차 못 한다.</p>
+      <p>해결: fallback 체인 추가.</p>
+      <pre><code>출항소 precondition (완화)
+1. departure_office 툴팁 템플릿 매칭
+2. departure_btn.png 매칭
+3. port_lighthouse_icon.png 매칭
+4. LLM YES/NO 판정 (최종 fallback)</code></pre>
+      <p>4단계 중 하나라도 통과하면 실행. "모든 증거가 완벽해야 한다"는 건 안전해 보이지만, 실제로는 시스템을 마비시킨다.</p>
 
-<p>3개 분류기(OCR, 규칙, 템플릿)가 항상 의견이 달랐다:</p>
-<ul>
-<li>OCR: `in-port-harbor` (도시명만 보면 HARBOR → in-port-harbor 매핑)</li>
-<li>규칙: `in-port` (형상 기반)</li>
-<li>템플릿: `in-port` (패턴 기반)</li>
-</ul>
+      <h2 id="codex-action">Codex가 화면도 직접 풀게 하기</h2>
+      <p>이전에는 Codex가 review를 하면 문서만 남기고 끝이었다. "문서만 수정하고 현재 화면은 못 푸는" 구조적 한계.</p>
+      <p>이제 supervisor-review 결과에도 <code>tap | back | wait</code> 직접 액션을 포함할 수 있게 했다:</p>
+      <pre><code>_apply_codex_direct_action(action, tap_x, tap_y)
+→ ADB 탭 실행
+→ 화면 변화 확인
+→ 성공/실패 기록</code></pre>
+      <p>진단뿐 아니라 자가개선, 감독관 리뷰 모두 이 구조를 탄다.</p>
 
-<p>앙상블 <code>top_gap ≤ 0.08</code>이면 <code>classification_conflict=True</code>가 되어 매 루프 Codex 진단이 발동했다.</p>
-<p>하지만 불일치는 버그가 아니라 <strong>정상적인 한계</strong>였다 — 3개 분류기가 완벽히 일치할 수 없다.</p>
+      <h2 id="rollback">행동으로 입증된 것만 남긴다</h2>
+      <p>가장 중요한 변경. Codex가 규칙 파일을 수정하면, 그 수정이 <strong>실제 액션으로 증명</strong>되지 않으면 자동으로 rollback 된다.</p>
+      <p>흐름:</p>
+      <pre><code>1. Codex 호출 (규칙 파일 스냅샷)
+2. Codex가 직접 액션 + 규칙 수정 반환
+3. 런타임이 액션 실행
+4. 후속 화면 재인식 → 효과 판정
+5. 효과 있음 → 수정 유지
+   효과 없음 → 규칙 파일 스냅샵으로 rollback</code></pre>
+      <p>이 철학의 핵심: <strong>Codex는 제안권만 있다. 반영은 런타임이 결정한다.</strong></p>
+      <p>잘못된 일반화가 문서에 영구적으로 남는 것을 방지한다. "어제 Codex가 이렇게 바꿨는데 왜 안 되지?"를 반복하지 않게 된다.</p>
+      <p>rollback 대상 파일:</p>
+      <ul>
+        <li><code>decision_tables/*.md</code></li>
+        <li><code>recognition-map-v2.md</code></li>
+        <li><code>config/ocr_states.json</code></li>
+        <li><code>goals.json</code></li>
+        <li><code>supervisor-review.md</code></li>
+      </ul>
 
-<h3>2. OCR이 substate 판정 권한 초과</h3>
+      <h2 id="skills">진단/유지보수 스킬 분리</h2>
+      <p>Codex 프롬프트가 너무 커져서, 두 가지 스킬로 분리했다:</p>
+      <ul>
+        <li><strong>gemmaton-maintenance</strong> — 파일 지도, 반복 장애 패턴, 수정 기준 (장기 문맥)</li>
+        <li><strong>gemmaton-codex-diagnosis</strong> — 안전한 1개 액션 JSON 반환에 집중 (즉시 행동)</li>
+      </ul>
+      <p>진단 호출은 둘 다 사용하고, 자가개선은 maintenance만 사용한다. 역할 분리.</p>
 
-<p><code>in-port</code>(항구 전경) 화면에도 도시명("리스본" 등)이 표시되므로,</p>
-<p>OCR이 도시명만 보면 무조건 <code>HARBOR → in-port-harbor</code>로 매핑했다.</p>
-<p>하지만 항구 전경과 항구 시설 선택 화면 모두 도시명이 있으므로 OCR로는 구분이 불가능하다.</p>
+      <h2 id="harbor-mapping">OCR HARBOR 매핑 변경</h2>
+      <p>이것은 와칠이 별도로 진단한 문제인데, 같은 날 해결했다. OCR이 도시명("리스본" 등)만 보면 무조건 <code>HARBOR → in-port-harbor</code>로 매핑했는데, 항구 전경(<code>in-port</code>)에도 도시명이 표시되어 구분이 불가능했다.</p>
+      <p>해결: <code>HARBOR → in-port</code>로 매핑 변경. OCR은 substate 판정 권한이 없다. <code>in-port-harbor</code> 승격은 template/rule에서 담당.</p>
+      <p>그리고 핵심 액션(<code>tap-departure-office</code>, <code>navigate-harbor</code>, <code>open-minimap</code>)은 격리 대상에서 제외했다. 핵심 액션이 격리되면 시스템이 마비되니까.</p>
 
-<h3>3. tap-departure-office 격리로 무한 open-minimap 루프</h3>
+      <h2 id="lesson">배운 것</h2>
+      <ul>
+        <li><strong>"완벽한 precondition"은 마비의 오판이다.</strong> 모든 증거가 완벽해야 실행한다면, 현실에서는 아무 것도 실행할 수 없다. fallback 체인이 필수다.</li>
+        <li><strong>문맥은 유통기한이 있다.</strong> 이전 화면의 복구 컨텍스트가 현재 화면에 투영되면, 현재 화면의 판단이 왜곡된다. 컨텍스트를 언제 폐기할지가 중요하다.</li>
+        <li><strong>AI가 수정한 규칙은 행동으로 검증되어야 한다.</strong> "이렇게 고치면 될 것 같아"는 의견일 뿐이다. 실제로 실행해보고 효과가 있을 때만 남긴다.</li>
+        <li><strong>메서드명 변경은 리팩토링의 가장 위험한 부분이다.</strong> 호출자가 못 따라가면 런타임 크래시다. compatibility alias를 달아두는 게 안전하다.</li>
+        <li><strong>문서만 수정하고 화면을 풀지 못하는 건 half-measure다.</strong> Codex가 문서에 규칙을 적어놓고 현재 화면은 손 안 대면, 다음 루프에서 또 같은 문제가 반복된다.</li>
+      </ul>
 
-<p><code>tap-departure-office</code>가 5회 precondition 실패로 격리(QUARANTINED)되면,</p>
-<p><code>in-port-harbor</code> 상태의 폴백이 <code>open-minimap</code>만 남아 무한 루프에 빠졌다.</p>
+      <h2 id="files">수정한 파일</h2>
+      <ul>
+        <li><code>src/control.py</code> — <code>back()</code> alias 추가</li>
+        <li><code>src/runtime.py</code> — 안전 가드, precondition 완화, 직접 액션 헬퍼, rollback 게이트, classification_conflict 재설계</li>
+        <li><code>src/runtime_supervisor.py</code> — 자가개선 직접 액션 실행</li>
+        <li><code>decision_tables/in-port.md</code> — 복구 문맥 메모</li>
+        <li><code>decision_tables/in-port-city.md</code> — back 우선 정책</li>
+        <li><code>recognition-map-v2.md</code> — precondition fallback 체인</li>
+        <li><code>prompts/supervisor-review.md</code> — 직접 액션 JSON 스키마, 스킬 연결</li>
+        <li><code>~/.codex/skills/gemmaton-maintenance/</code> — 신설 (3파일)</li>
+        <li><code>~/.codex/skills/gemmaton-codex-diagnosis/</code> — 슬림화</li>
+      </ul>
 
-<h3>4. control.back() 경로 불일치 (structural bug)</h3>
+      <h2 id="next">다음에 할 일</h2>
+      <ul>
+        <li>실제 런타임 로그 재수집 — 수정이 의도대로 동작하는지 확인</li>
+        <li>rollback이 실제로 작동하는지 점검 — <code>reverted_files</code> 로그 추적</li>
+        <li>약한 모델/강한 모델 역할 재분리 검토 — 약한 모델은 직접 액션만, 강한 모델은 문서 수정</li>
+      </ul>
 
-<p><code>control.py</code>에 <code>back()</code> 메서드가 없는데 런타임에서 <code>control.back()</code>을 호출하고 있었다.</p>
-
-<h2>수정 내역</h2>
-
-<h3>1. classification_conflict 진단 정책 재설계</h3>
-
-<p><strong>이전:</strong> 불일치 시 매 루프 Codex 진단 발동 → 루프 블로킹 (40~60초/회)</p>
-<p><strong>이후:</strong> 불일치 시 최대 2회 진단, 성공 시 분류 갱신, 실패 시 종료</p>
-
-<pre><code># 분류 불일치 → 진단 → 액션 → 성공 시 분류 갱신 / 실패 시 재진단
-if classification_conflict:
-    if self._classification_conflict_retries < 2:
-        diagnosis = await self._codex_diagnose_with_fallback(...)
-        if diagnosis:
-            continue  # 성공
-    # 2회 소진 → 종료
-    self.stop_event.set()
-    break</code></pre>
-
-<h3>2. HARBOR → in-port 매핑 변경</h3>
-
-<p>OCR은 coarse state만 반환하도록 매핑을 변경:</p>
-<ul>
-<li>`HARBOR: 'in-port'` (이전: `'in-port-harbor'`)</li>
-</ul>
-
-<p>OCR은 substate 판정 권한이 없다. <code>in-port-harbor</code> 승격은 template/rule에서 담당.</p>
-
-<h3>3. 핵심 액션 격리 해제</h3>
-
-<p><code>tap-departure-office</code>, <code>navigate-harbor</code>, <code>open-minimap</code>은 핵심 액션이므로</p>
-<p>격리 대상에서 제외:</p>
-
-<pre><code>core_actions = ("tap-departure-office", "navigate-harbor", "open-minimap")
-if action in core_actions:
-    logger.info(f"핵심 액션 격리 해제: {action}")
-    quarantined = False</code></pre>
-
-<h3>4. tap-departure-office precondition 완화</h3>
-
-<p>기존 <code>departure_office_visible</code> 단일 템플릿 의존도를 낮추고 fallback 체인 추가:</p>
-<ul>
-<li>`actions/departure_btn.png`</li>
-<li>`in-port/port_lighthouse_icon.png`</li>
-<li>최종적으로 LLM YES/NO 판정</li>
-</ul>
-
-<h3>5. in-port-city 상태 안전 가드 추가</h3>
-
-<p><code>select_action()</code> 초기에 <code>current_state == "in-port-city"</code>이면 <code>back</code> 우선.</p>
-<p>도시 내부 화면에서 harbor 복구 문맥보다 back이 먼저다.</p>
-
-<h3>6. back() compatibility alias 추가</h3>
-
-<p><code>control.py</code>에 <code>back()</code> → <code>go_back()</code> alias를 추가하여 structural bug 수정.</p>
-
-<h3>7. Codex 진단 프롬프트 응답 스키마 확장</h3>
-
-<p>기존 응답에 <code>changes_made</code>, <code>report</code>, <code>goal_progress</code>, <code>bottleneck</code> 필드를 추가.</p>
-<p>이전에는 이 필드들이 요청에 없어서 텔레그램 보고에 항상 "보고 없음"이 나왔다.</p>
-
-<h3>8. 유지보수 스킬 신설</h3>
-
-<ul>
-<li>**gemmaton-maintenance**: 유지보수 프로젝트 문맥, 파일 지도, 반복 장애 패턴</li>
-<li>**gemmaton-codex-diagnosis**: 즉시 진단 액션 JSON 계약에 슬림화</li>
-</ul>
-
-<h2>구조 변경 요약</h2>
-
-<pre><code>이전: 분류 불일치 → Codex 진단 → 탭 → 성공해도 다음 루프에서 또 불일치 → 무한 진단
-이후: 분류 불일치 → 진단 → 탭 → 성공 시 actual_state로 분류 갱신 → 불일치 해소
-                               ↓ 실패
-                         재진단 → 실패 → 종료</code></pre>
-
-<h2>수정한 파일</h2>
-
-<tr><td>파일</td><td>변경</td></tr>
-<p>|------|------|</p>
-<tr><td>`src/runtime.py`</td><td>진단 정책, 매핑, 격리 해제, precondition 완화, 안전 가드, 프롬프트</td></tr>
-<tr><td>`src/control.py`</td><td>`back()` compatibility alias</td></tr>
-<tr><td>`src/runtime_supervisor.py`</td><td>자가개선 직접 액션 실행</td></tr>
-<tr><td>`src/ocr_classifier.py`</td><td>HARBOR 매핑 참고 (runtime.py에서 매핑 변경)</td></tr>
-<tr><td>`decision_tables/in-port.md`</td><td>복구 문맥 메모</td></tr>
-<tr><td>`decision_tables/in-port-city.md`</td><td>back 우선 정책 명시</td></tr>
-<tr><td>`recognition-map-v2.md`</td><td>precondition fallback 체인</td></tr>
-<tr><td>`prompts/supervisor-review.md`</td><td>직접 액션 JSON 스키마</td></tr>
-<tr><td>`~/.codex/skills/gemmaton-maintenance/`</td><td>신설 (3파일)</td></tr>
-<tr><td>`~/.codex/skills/gemmaton-codex-diagnosis/`</td><td>슬림화</td></tr>
-
-<h2>남은 리스크</h2>
-
-<p>1. <strong>약한 모델에게 직접 액션 + 문서 수정 동시 요청은 부담이 큼</strong> — 장기적으로 역할 분리 필요</p>
-<p>2. <strong>supervisor-review 직접 액션은 진단만큼 강한 검증을 하지 않음</strong> — 로그로 성공률 점검 필요</p>
-<p>3. <strong>recognition-map-v2.md와 runtime patch 로직이 동시에 존재</strong> — 나중에 의도가 어긋나면 혼란 가능</p>
-
-<h2>다음 작업</h2>
-
-<p>1. 실제 런타임 로그 1세션 재수집</p>
-<p>2. supervisor-review 직접 액션 성공률 점검</p>
-<p>3. 필요 시 약한 모델/강한 모델 역할 재분리</p>
-<p>4. <code>review_context.json</code>에 "현재 화면 우선, 과거 review는 보조" 규칙 강화</p>
       </div>
     </article>
   </main>
+
   <footer>
     <p>&copy; 2026 젬대버 2호점. Powered by AI + Coffee.</p>
   </footer>
