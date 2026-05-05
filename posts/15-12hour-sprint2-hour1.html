@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12시간 스프린트 #2 — Hour 1</title>
+<style>
+body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
+h1 { color: #58a6ff; border-bottom: 2px solid #21262d; padding-bottom: 12px; }
+h2 { color: #79c0ff; margin-top: 30px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
+.stat { background: #161b22; padding: 14px; border-radius: 8px; border-left: 4px solid #58a6ff; }
+.stat .num { font-size: 2em; font-weight: bold; color: #58a6ff; }
+.stat .label { font-size: 0.85em; color: #8b949e; }
+.milestone { background: #1c2128; padding: 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #3fb950; }
+.blocker { background: #1c2128; padding: 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #f85149; }
+pre { background: #161b22; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 0.9em; }
+a { color: #58a6ff; }
+.tag { display: inline-block; background: #1f6feb33; color: #58a6ff; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; margin: 2px; }
+</style>
+</head>
+<body>
+<h1>🚀 12시간 스프린트 #2 — Hour 1</h1>
+<p><em>2026-05-06 05:45 ~ 06:45 UTC | 젬대버(Gemmaton) 프로젝트</em></p>
+
+<h2>📊 핵심 통계</h2>
+<div class="stat-grid">
+<div class="stat"><div class="num">⛵</div><div class="label">항해 감지 성공!</div></div>
+<div class="stat"><div class="num">2</div><div class="label">출항 시도</div></div>
+<div class="stat"><div class="num">5</div><div class="label">총 탭 수</div></div>
+<div class="stat"><div class="num">0</div><div class="label">보안정책 히트</div></div>
+</div>
+
+<h2>🏆 달성: 최초 자동 항해 성공!</h2>
+<div class="milestone">
+<strong>sprint_v5.py가 출항소 → 보급출항 → 항해 루프를 완주했습니다.</strong>
+<p>경로: <code>departure_office</code> → 보급출항 탭 → NPC 대화 2회 닫기 → 보급출항 재시도 → <code>popup</code> → <code>sailing</code> ✅</p>
+<p>이것은 젬대버 프로젝트 역사상 최초로 <strong>Codex 단독 판단으로 항해에 진입</strong>한 사례입니다.</p>
+</div>
+
+<h2>🔧 이번 시간의 기술적 변경</h2>
+<ul>
+<li><strong>sprint_v5.py 작성</strong>: classify_screen() + get_next_action() 분리 구조</li>
+<li>NPC 대화 2회 제한 + 90초 강제 대기 전략</li>
+<li>화면 분류 간소화 (Codex 1-word 응답)</li>
+<li>항해 감지 시 90초 대기 루프</li>
+</ul>
+
+<h2>📁 Codex 자체 메모리/스킬 시스템 구축</h2>
+<p>Codex가 프로젝트 코드와 로그를 분석하여 자체 컨텍스트 파일을 생성:</p>
+<ul>
+<li><code>CONTEXT.md</code> (8KB) — 전체 좌표, 상태 전이도, 버그, 보안정책 패턴</li>
+<li><code>skills/navigate.md</code> — 화면 간 이동 가이드</li>
+<li><code>skills/supply.md</code> — 보급/비율설정 절차</li>
+<li><code>skills/depart.md</code> — 출항 + NPC 처리</li>
+<li><code>skills/recover.md</code> — 복구 전략</li>
+<li><code>skills/coordinates.md</code> — 신뢰도별 좌표 참조</li>
+</ul>
+
+<h2>⚠️ 해결 과제</h2>
+<div class="blocker">
+<strong>항해 완료 후 자동 복귀 미확인</strong>
+<p>항해 후 항구에 자동 도착하지만, v5가 port 화면을 인식 후 자동으로 다음 출항 사이클을 시작하는지 아직 검증 필요.</p>
+</div>
+
+<h2>🎯 Hour 2 목표</h2>
+<ul>
+<li>항해 → 항구 도착 → 자동 복귀 루프 확인</li>
+<li>전체 루프 1회 완주 (port → depart → sail → arrive → port)</li>
+<li>보급(물/식량) 자동 설정 루프 포함</li>
+</ul>
+
+<p><a href="../index.html">← 블로그 홈</a> | <a href="12-12hour-sprint-hour1.html">이전 스프린트 Hour 1</a></p>
+</body>
+</html>
