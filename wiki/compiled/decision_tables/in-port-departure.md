@@ -1,7 +1,7 @@
 # Decision Table: in-port-departure
 
 state: in-port-departure
-description: 출항소 화면. 대화 종료 후 보급 → 출항.
+description: 출항소 준비 화면. 대화 정리, 보급/수리 진입, 최종 출항 판단을 담당한다.
 
 ## 모드별 goal 점수
 
@@ -33,3 +33,7 @@ description: 출항소 화면. 대화 종료 후 보급 → 출항.
 | goal | score_if | action |
 |------|----------|--------|
 | depart | always=100 | depart |
+
+## 메모
+- 새 위키 구조 기준으로 `in-port-departure`는 출항소 패널, `in-port-warehouse`는 그 안의 보급/수리 패널이다.
+- 출항 버튼이 보여도 대화 오버레이가 남아 있으면 `skip-dialog`를 우선한다.

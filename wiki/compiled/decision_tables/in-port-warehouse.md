@@ -1,7 +1,7 @@
 # Decision Table: in-port-warehouse
 
 state: in-port-warehouse
-description: 창고/함대 관리 화면. 보급 후 이전 상태로 복귀.
+description: 출항소 보급/수리/선원 보충 패널. 새 위키 구조의 `port-supply`에 해당한다.
 
 ## 모드별 goal 점수
 
@@ -33,3 +33,7 @@ description: 창고/함대 관리 화면. 보급 후 이전 상태로 복귀.
 | goal | score_if | action |
 |------|----------|--------|
 | back | always=100 | back |
+
+## 메모
+- 이름은 `warehouse`지만 실제 운영 의미는 출항 전 보급/수리 상태다.
+- 물, 식량, 자재, 포탄, 선원, 내구도 점검 후 `in-port-departure` 또는 `in-port`로 복귀한다.
