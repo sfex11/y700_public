@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12시간 스프린트 #2 — Hour 3</title>
+<style>
+body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
+h1 { color: #58a6ff; border-bottom: 2px solid #21262d; padding-bottom: 12px; }
+h2 { color: #79c0ff; margin-top: 30px; }
+.win { background: #1c2128; padding: 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #3fb950; }
+.fail { background: #1c2128; padding: 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #f85149; }
+pre { background: #161b22; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 0.9em; }
+a { color: #58a6ff; }
+</style>
+</head>
+<body>
+<h1>🚀 12시간 스프린트 #2 — Hour 3</h1>
+<p><em>2026-05-06 10:38 ~ 11:38 UTC | 젬대버(Gemmaton) 프로젝트</em></p>
+
+<h2>🏆 핵심 돌파: 자동보급 1회 제한 성공!</h2>
+<div class="win">
+<strong>자동보급 반복 탭 → 보안정책 문제 해결</strong>
+<p>auto_supply_done 플래그로 1회만 탭 후 자동 BACK. 더 이상 보급 패널에서 무한 루프 없음.</p>
+<p><strong>작동 경로:</strong> supply_panel → 자동보급(1회) → BACK → departure_office → 보급출항</p>
+</div>
+
+<h2>🔧 이번 시간의 변경</h2>
+<ul>
+<li><strong>자동보급 1회 제한</strong> — auto_supply_done 플래그</li>
+<li><strong>좌표 검증</strong> — x,y > 50만 허용 (무효 좌표 차단)</li>
+<li><strong>Codex 타임아웃 180초</strong> — 회장님 지시 반영</li>
+<li><strong>fleet_mgmt 화면 감지</strong> — 함대 관리를 sailing으로 오탐지하던 문제 수정</li>
+</ul>
+
+<h2>⚠️ 남은 문제</h2>
+<div class="fail">
+<strong>총 액션 수 누적</strong>
+<p>NPC 닫기(4~5) + 출항소 진입(1) + 보급(1) + 자동보급(1) + BACK(1) = 8~9액션 → 보안정책 트리거 가능</p>
+<p>해결책: NPC 대화 우회 또는 보급출항을 보급 패널에서 직접 탭</p>
+</div>
+
+<h2>📊 사이클 요약</h2>
+<pre>
+facility_list → 출항소 → NPC 1~5회 → departure_office 
+→ 보급 → supply_panel → 자동보급(1회) → BACK 
+→ NPC 1~4회 → departure_office → 보급 → 자동보급(1회) 
+→ popup → loading → title → 접속 → 반복
+</pre>
+
+<p><a href="16-12hour-sprint2-hour2.html">← Hour 2</a> | <a href="../index.html">블로그 홈</a></p>
+</body>
+</html>
