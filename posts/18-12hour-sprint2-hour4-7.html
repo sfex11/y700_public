@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스프린트 #2 Hour 4-7 중간 보고서</title>
+<style>
+body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
+h1 { color: #58a6ff; border-bottom: 2px solid #21262d; padding-bottom: 12px; }
+h2 { color: #79c0ff; margin-top: 30px; }
+h3 { color: #d2a8ff; }
+.win { background: #1c2128; padding: 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #3fb950; }
+.fail { background: #1c2128; padding: 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #f85149; }
+.info { background: #1c2128; padding: 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #58a6ff; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+th, td { border: 1px solid #30363d; padding: 8px 12px; text-align: left; }
+th { background: #161b22; color: #58a6ff; }
+a { color: #58a6ff; }
+code { background: #161b22; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+</style>
+</head>
+<body>
+<h1>📊 스프린트 #2 Hour 4-7 중간 보고서</h1>
+<p><em>2026-05-06 09:00 ~ 16:00 UTC | 젬대버(Gemmaton) 프로젝트</em></p>
+
+<h2>🏆 주요 성과</h2>
+
+<div class="win">
+<h3>1. NPC 대화 읽기 성공</h3>
+<p>회장님 피드백: "NPC 무조건 닫지 말고 읽고 적절한 버튼 눌러라"</p>
+<ul>
+<li>"출항 전 준비 안내" → <strong>바로 출항</strong> 버튼 → 출항 성공!</li>
+<li>"물·식량 부족 경고" → <strong>다음</strong> 버튼</li>
+<li>"선원 준비 안내" → <strong>다음</strong> 버튼</li>
+</ul>
+</div>
+
+<div class="win">
+<h3>2. 출항 성공 + 침몰 처리</h3>
+<p>"바로 출항"으로 최초 출항 성공. 하지만 목적지 없이 speed 0.0 → 정박 → 약탈단에게 침몰.</p>
+<p>침몰 팝업에서 <strong>"리스본" 회항</strong> 선택 구현.</p>
+</div>
+
+<div class="win">
+<h3>3. 보안정책 패턴 분석</h3>
+<p>로그에서 <strong>정확한 트리거 패턴</strong> 파악:</p>
+<table>
+<tr><th>패턴</th><th>횟수</th><th>결과</th></tr>
+<tr><td>NPC 10회 연속 닫기</td><td>3회</td><td>게임 강제 종료</td></tr>
+<tr><td>같은 영역 3~4회 반복 탭</td><td>5회+</td><td>보안정책 트리거</td></tr>
+<tr><td>Codex 부정확 좌표 (75,70)</td><td>4회</td><td>빗나감 → 재시도</td></tr>
+</table>
+</div>
+
+<h2>🛡️ 보안정책 회피 강화</h2>
+<div class="info">
+<ul>
+<li><strong>같은 영역(80px) 3회 반복 → 60초 대기</strong></li>
+<li><strong>NPC 제한 15→5회</strong></li>
+<li><strong>좌표 검증 &gt;100</strong> (이전 &gt;50)</li>
+<li><strong>탭 성공 여부 추적</strong> — 전/후 해시 비교</li>
+<li><strong>탭 이력 20개 저장</strong></li>
+</ul>
+</div>
+
+<h2>💀 발견한 문제들</h2>
+
+<div class="fail">
+<h3>선원 부족</h3>
+<p>출항소에서 "선원 부족" 경고 → 출항 불가. 출항소 내부에 "선원 모집" 버튼 존재 확인. v5에 선원 모집 최우선 단계 추가.</p>
+</div>
+
+<div class="fail">
+<h3>자동항로 미설정</h3>
+<p>"바로 출항" = 목적지 없는 출항. 바다에서 정박(speed 0.0) → 결국 침몰. 출항소에서 목적지 선택 후 출항 필요.</p>
+</div>
+
+<h2>🔧 수정 내역</h2>
+<table>
+<tr><th>항목</th><th>변경</th></tr>
+<tr><td>NPC 대화</td><td>내용 읽기 + 우선순위 버튼 선택</td></tr>
+<tr><td>침몰 처리</td><td>"리스본" 회항 선택 (무료부활 금지)</td></tr>
+<tr><td>선원 모집</td><td>출항소에서 최우선 단계 추가</td></tr>
+<tr><td>반복 탭 감지</td><td>80px 이내 3회 → 60초 대기</td></tr>
+<tr><td>클릭 추적</td><td>전/후 해시 비교 + 성공 여부 기록</td></tr>
+</table>
+
+<h2>📈 누적 통계 (~7시간)</h2>
+<table>
+<tr><th>항목</th><th>값</th></tr>
+<tr><td>총 탭</td><td>~60</td></tr>
+<tr><td>출항 성공</td><td>1회</td></tr>
+<tr><td>항해 감지</td><td>2회</td></tr>
+<tr><td>침몰</td><td>1회</td></tr>
+<tr><td>NPC 읽기 성공</td><td>10+ 회</td></tr>
+</table>
+
+<h2>🎯 다음 목표 (Hour 8-12)</h2>
+<ol>
+<li>선원 모집 → 보급 → <strong>목적지 설정 후 출항</strong></li>
+<li>침몰 없는 안정 루프 완주</li>
+<li>전체 루프: port→출항소→선원모집→보급→출항→항해→도착→port</li>
+</ol>
+</body>
+</html>
