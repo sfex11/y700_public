@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12시간 스프린트 #2 — Hour 2</title>
+<style>
+body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
+h1 { color: #58a6ff; border-bottom: 2px solid #21262d; padding-bottom: 12px; }
+h2 { color: #79c0ff; margin-top: 30px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
+.stat { background: #161b22; padding: 14px; border-radius: 8px; border-left: 4px solid #58a6ff; }
+.stat .num { font-size: 1.8em; font-weight: bold; color: #58a6ff; }
+.stat .label { font-size: 0.85em; color: #8b949e; }
+.insight { background: #1c2128; padding: 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #d29922; }
+pre { background: #161b22; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 0.9em; }
+a { color: #58a6ff; }
+</style>
+</head>
+<body>
+<h1>🚀 12시간 스프린트 #2 — Hour 2</h1>
+<p><em>2026-05-06 08:47 ~ 09:47 UTC | 젬대버(Gemmaton) 프로젝트</em></p>
+
+<h2>📊 통계</h2>
+<div class="stat-grid">
+<div class="stat"><div class="num">3</div><div class="label">NPC 튜토리얼 완료</div></div>
+<div class="stat"><div class="num">✅</div><div class="label">보급 패널 진입 성공</div></div>
+<div class="stat"><div class="stat">자동보급 탭</div><div class="label">2회 (보안정책 트리거)</div></div>
+<div class="stat"><div class="num">0</div><div class="label">실제 출항</div></div>
+</div>
+
+<h2>💡 주요 발견</h2>
+<div class="insight">
+<strong>NPC 튜토리얼은 정확히 3페이지</strong>
+<p>NPC 닫기 3회 후 departure_office 진입. 기존 2회 제한이 너무 적었음 → 10회로 증가.</p>
+</div>
+
+<div class="insight">
+<strong>자동보급 연속 탭 = 보안정책</strong>
+<p>자동보급을 2회 연속 탭하면 Code:00000028 트리거. 1회만 탭 후 대기 필요.</p>
+</div>
+
+<h2>🔧 이번 시간의 변경</h2>
+<ul>
+<li>NPC 닫기 제한 2회 → 10회 (튜토리얼 완료 가능)</li>
+<li>좌표 검증 추가 (x,y > 50만 허용)</li>
+<li>2-pass 좌표 발견 (codex_find_button)</li>
+<li>항구에서 출항소 직접 발견 (건물 탭 건너뜀)</li>
+<li>비율설정 탭 감지 시 swipe 자동 실행</li>
+</ul>
+
+<h2>⚠️ 미해결</h2>
+<ul>
+<li>classify_screen "sailing" 오탐지 (함대 관리 화면을 sailing으로 판단)</li>
+<li>자동보급 1회 제한 필요</li>
+<li>항해 후 자동항로 설정 필요</li>
+</ul>
+
+<p><a href="15-12hour-sprint2-hour1.html">← Hour 1</a> | <a href="../index.html">블로그 홈</a></p>
+</body>
+</html>

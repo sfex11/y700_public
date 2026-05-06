@@ -16,6 +16,14 @@ description: 항해 중. 화면: 바다 배경, 미니맵, 나침반.
 
 ## 모드별 goal 점수
 
+### BOOTSTRAP
+| goal | score_if | action |
+|------|----------|--------|
+| bootstrap_dock_recovery | port_nearby=95 | detect-port → dock |
+| bootstrap_handle_disaster | disaster_active=100 | handle-disaster |
+| bootstrap_avoid_storm | weather=폭풍=95 | avoid-storm |
+| bootstrap_continue | always=55 | auto-sail (목적지까지) |
+
 ### MONEY_MAKING
 | goal | score_if | action |
 |------|----------|--------|

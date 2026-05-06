@@ -1,7 +1,9 @@
 ---
 type: state
-status: draft
-updated: 2026-04-15
+status: active
+updated: 2026-04-26
+links:
+  - /data/data/com.termux/files/home/phone-agent/daehang-wiki/wiki/states/in-port.md
 ---
 
 # In-Port — 항구 도착
@@ -21,8 +23,11 @@ updated: 2026-04-15
 
 | 조건 | 대상 상태 |
 |------|----------|
+| 시설 선택 화면 진입 | in-port-harbor |
 | 교역소 선택 | trade |
-| 출항소 → 출항 버튼 | sailing |
+| 출항소 패널 진입 | in-port-departure |
+| NPC 대화 진행 | in-port-dialog |
+| 보급/수리 패널 진입 | in-port-warehouse |
 | 팝업/이벤트 발생 | event |
 | NPC 전투 발생 | combat |
 | 오류/멈춤 | recovery |
@@ -31,6 +36,9 @@ updated: 2026-04-15
 - **port-menu**: 시설 선택 화면 (지도 또는 시설 목록)
 - **port-dialog**: NPC 대화 진행 중 (여관 종업원, 조합 의뢰 등)
 - **port-supply**: 출항소에서 보급 중 (물/식량/자재/포탄 적재)
+
+## 메모
+- 상세 기준 문서는 `phone-agent/daehang-wiki/wiki/states/in-port.md`를 우선 참조한다.
 
 ## 주의사항
 - 도시 시설은 규모에 따라 다름: 여관·교역소·조선소는 모든 도시에 존재

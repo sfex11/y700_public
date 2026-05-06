@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>젬대버 12시간 무정지 작업 — 1시간차 보고</title>
+<style>
+body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+h2 { color: #2980b9; }
+.highlight { background: #e8f4f8; padding: 15px; border-left: 4px solid #3498db; margin: 15px 0; }
+.warning { background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 15px 0; }
+.success { background: #d4edda; padding: 15px; border-left: 4px solid #28a745; margin: 15px 0; }
+code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+.timestamp { color: #7f8c8d; font-size: 0.9em; }
+</style>
+</head>
+<body>
+<h1>🚀 젬대버 12시간 무정지 작업 — 1시간차 보고</h1>
+<p class="timestamp">2026-05-05 19:38 ~ 20:38 KST</p>
+
+<h2>📊 달성도</h2>
+<div class="highlight">
+<strong>목표 1: NPC 튜토리얼 오버레이 해결</strong> — 부분 달성<br>
+• NPC 대화가 아니라 <strong>의뢰 퀘스트 팝업</strong>이었음을 발견<br>
+• 팝업 닫기(2328,1742)로 성공적 제거<br>
+• <strong>남은 문제:</strong> 출항소 재진입 시마다 팝업 재등장
+</div>
+
+<div class="success">
+<strong>목표 2: 물/식량 보급</strong> — 근접<br>
+• <strong>보급 패널 진입 성공</strong> — 보급 메뉴(106,266) → 패널 열기<br>
+• 모험/거래/전투/사용자 탭 발견<br>
+• 자동 보급(2730,1333), 직접 보급(2200,1333) 버튼 발견<br>
+• <strong>물 0/42, 식량 0/42</strong> — 자동 보급으로 채워지지 않음
+</div>
+
+<div class="warning">
+<strong>핵심 발견: 보급 불가 원인</strong><br>
+• 골드 315만 충분<br>
+• 물 타일 탭 → 직접 보급 패널 열림 → <strong>보안정책 트리거</strong><br>
+• 보급 패널에서 2회 탭만에 보안정책 발생<br>
+• <strong>가설:</strong> 비율 설정(2755,260)에서 물/식량 비율을 먼저 설정해야 자동 보급이 작동
+</div>
+
+<h2>🗺️ 발견한 좌표</h2>
+<ul>
+<li>시설 목록 출항소: (2690,455) ~ (2750,419)</li>
+<li>출항소 보급 메뉴: (106,266)</li>
+<li>보급 패널 탭: 사용자(1110,248), 모험(1528,248), 거래(1943,248), 전투(2358,248)</li>
+<li>자동 보급: (2730,1333)</li>
+<li>직접 보급: (2200,1333)</li>
+<li>물 타일: (1035,995), 식량 타일: (1390,995)</li>
+<li>의뢰 팝업 닫기: (2328,1742), 이동: (2797,1743)</li>
+</ul>
+
+<h2>⚠️ 보안정책 패턴</h2>
+<ul>
+<li>보급 패널 내에서 2회 탭 → 트리거</li>
+<li>항구/출항소 화면에서 4~5회 탭 → 트리거</li>
+<li><strong>해결 필요:</strong> 각 탭 사이 20초 이상 대기</li>
+</ul>
+
+<h2>📋 다음 1시간 계획</h2>
+<ol>
+<li>보급 패널에서 <strong>비율 설정</strong> 탭 → 물/식량 비율 설정</li>
+<li>비율 설정 후 <strong>자동 보급</strong> 재시도</li>
+<li>물/식량 채워지면 <strong>보급 출항</strong></li>
+<li>출항 성공 → 항해 감지</li>
+</ol>
+</body>
+</html>

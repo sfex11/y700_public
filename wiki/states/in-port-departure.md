@@ -1,8 +1,10 @@
 ---
 type: state
-status: draft
-updated: 2026-04-17
+status: active
+updated: 2026-04-26
 parent: in-port
+links:
+  - /data/data/com.termux/files/home/phone-agent/daehang-wiki/wiki/states/in-port-departure.md
 ---
 
 # In-Port Departure — 출항소
@@ -34,3 +36,6 @@ parent: in-port
 - tap-depart: 출항 버튼 탭
 - open-supply: 보급/창고 진입
 - back: 뒤로가기
+
+## 메모
+- 상세 기준 문서는 `phone-agent/daehang-wiki/wiki/states/in-port-departure.md`를 우선 참조한다.
