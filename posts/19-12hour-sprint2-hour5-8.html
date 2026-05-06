@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스프린트 #2 Hour 5-8 보고서</title>
+<style>
+body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
+h1 { color: #58a6ff; border-bottom: 2px solid #21262d; padding-bottom: 12px; }
+h2 { color: #79c0ff; margin-top: 30px; }
+h3 { color: #d2a8ff; }
+.win { background: #1c2128; padding: 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #3fb950; }
+.fail { background: #1c2128; padding: 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #f85149; }
+.info { background: #1c2128; padding: 16px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #58a6ff; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+th, td { border: 1px solid #30363d; padding: 8px 12px; text-align: left; }
+th { background: #161b22; color: #58a6ff; }
+a { color: #58a6ff; }
+code { background: #161b22; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 16px 0; }
+.gallery img { width: 100%; border-radius: 8px; border: 1px solid #30363d; }
+.caption { text-align: center; color: #8b949e; font-size: 0.85em; margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>📊 스프린트 #2 Hour 5-8 보고서</h1>
+<p><em>2026-05-06 16:00 ~ 03:00 UTC (KST 01:00~12:00) | 젬대버(Gemmaton) 프로젝트</em></p>
+
+<h2>📸 현재 게임 화면</h2>
+<div class="gallery">
+<div><img src="../images/sprint2/hour8_current.jpg" alt="현재 화면"><div class="caption">현재 화면 — 출항소 NPC 대화</div></div>
+<div><img src="../images/sprint2/hour8_ss0.jpg" alt="출항소"><div class="caption">출항소 내부</div></div>
+<div><img src="../images/sprint2/hour8_ss1.jpg" alt="NPC"><div class="caption">NPC 대화 진행 중</div></div>
+<div><img src="../images/sprint2/hour8_ss2.jpg" alt="보급"><div class="caption">보급 완료 화면</div></div>
+</div>
+
+<h2>💀 핵심 문제: 선원 모집 무한 루프 (6시간!)</h2>
+<div class="fail">
+<h3>145탭을 선원 모집에만 사용</h3>
+<p>출항소에서 Codex가 항상 "선원 모집"을 최우선으로 반환 → 보급/출항으로 넘어가지 못함</p>
+<p><strong>원인:</strong> 프롬프트에서 "선원 부족 시 항상 선원모집 최우선" → 출항소엔 항상 선원 모집 버튼이 있으므로 항상 선택됨</p>
+<p><strong>해결:</strong> 우선순위를 <code>보급출항 > 보급 > 선원모집</code>으로 변경</p>
+</div>
+
+<h2>✅ 작동한 것들</h2>
+<div class="win">
+<h3>보안정책 0회!</h3>
+<p>같은 영역 반복 감지 + 60초 대기 + 좌표 검증 >100 덕분에 보안정책 트리거 0회</p>
+</div>
+<div class="win">
+<h3>탭 성공 추적 정상 작동</h3>
+<p>모든 탭에 ✅변화/❌무변화 기록. 현재 109탭 중 대부분 ✅변화</p>
+</div>
+<div class="win">
+<h3>보급 → 자동보급 → BACK 루프 성공</h3>
+<p>auto_supply_done 플래그로 1회만 탭 후 자동 BACK. 정상 작동 확인</p>
+</div>
+<div class="win">
+<h3>NPC 읽기 계속 개선</h3>
+<ul>
+<li>"선원 부족해서 출항 안 됨" → 선원 부족 버튼 선택</li>
+<li>"대화 진행" → 대화진행 앵커 아이콘 선택</li>
+<li>다양한 NPC 상황에 적절히 대응</li>
+</ul>
+</div>
+
+<h2>🔧 수정 내역</h2>
+<table>
+<tr><th>시간</th><th>변경</th></tr>
+<tr><td>Hour 4</td><td>NPC 대화 읽기 + 침몰 시 리스본 회항</td></tr>
+<tr><td>Hour 5</td><td>보안정책 패턴 분석 + 같은 영역 반복 감지</td></tr>
+<tr><td>Hour 5</td><td>NPC 제한 15→5회, 좌표 검증 >100</td></tr>
+<tr><td>Hour 6</td><td>탭 성공 여부 추적 (전/후 해시 비교)</td></tr>
+<tr><td>Hour 6</td><td>ADB pull 타임아웃 30→60초 + 3회 재시도</td></tr>
+<tr><td>Hour 7</td><td>선원 모집 최우선 → 보급/출항 최우선으로 변경</td></tr>
+<tr><td>Hour 8</td><td>보급→자동보급→BACK→출항소→NPC→보급 루프 정상화</td></tr>
+</table>
+
+<h2>🔄 현재 루프 흐름</h2>
+<pre>
+항구 → 건물 → 출항소 → NPC(2-4회) → departure_office
+→ 보급 → 자동보급(1회) → BACK → 출항소
+→ NPC("선원 부족") → ... 반복
+</pre>
+
+<h2>📈 누적 통계 (8시간)</h2>
+<table>
+<tr><th>항목</th><th>값</th></tr>
+<tr><td>총 탭</td><td>109</td></tr>
+<tr><td>출항 성공</td><td>0 (이번 세션)</td></tr>
+<tr><td>항해 감지</td><td>0</td></tr>
+<tr><td>보안정책</td><td>0 ✅</td></tr>
+<tr><td>NPC 닫기</td><td>53회</td></tr>
+<tr><td>보급 성공</td><td>다수 (자동보급 정상)</td></tr>
+</table>
+
+<h2>🎯 다음 목표 (Hour 9-12)</h2>
+<ol>
+<li><strong>보급 후 출항</strong> — 선원 부족 NPC를 건너뛰고 보급출항 버튼 탭</li>
+<li><strong>목적지 설정</strong> — 출항 후 speed 0.0 방지</li>
+<li><strong>전체 루프 1회 완주</strong></li>
+</ol>
+</body>
+</html>
