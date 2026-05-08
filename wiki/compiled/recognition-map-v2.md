@@ -65,6 +65,56 @@ version: 2.3
           method: llm
           target: "게임 타이틀 화면이나 홈 화면이 보이는가?"
           region: [0, 0, 720, 450]
+      - id: title_connect_button_visible
+        method: llm
+        target: "타이틀 화면 하단 중앙에 '접속' 버튼이 또렷하게 보이는가?"
+        region: [220, 300, 500, 430]
+        timeout: 5000
+      - id: title_splash_visible_before_connect
+        method: llm
+        target: "'대항해시대 ORIGIN' 로고와 KT/LINE GAMES/Motif 퍼블리셔 로고가 보이지만 '접속' 버튼은 아직 없는 초기 타이틀 스플래시인가?"
+        region: [0, 0, 720, 450]
+        timeout: 5000
+    on_fail: wait_and_retry
+
+- action: handle-title-connect
+  category: login
+  recognition:
+    precondition:
+      - id: title_logo_detected
+        method: template
+        target: "login/login__title_logo.png"
+        region: [100, 20, 520, 180]
+        threshold: 0.6
+        timeout: 5000
+        fallback:
+          method: llm
+          target: "게임 타이틀 화면이 보이는가? 대항해시대 ORIGIN 로고가 있는가?"
+          region: [0, 0, 720, 450]
+    execution:
+      - id: tap_connect_button
+        method: template
+        target: "login/login__connect_button.png"
+        region: [220, 300, 500, 430]
+        threshold: 0.6
+        timeout: 5000
+        fallback:
+          method: tap
+          x: 393
+          y: 362
+          id: tap_connect_fixed
+    verification:
+      - id: left_title_screen
+        method: template
+        target: "login/login__title_logo.png"
+        region: [100, 20, 520, 180]
+        threshold: 0.6
+        expect_match: false
+        timeout: 15000
+        fallback:
+          method: llm
+          target: "타이틀 화면이 사라지고 로딩 또는 다른 화면으로 전이되었는가?"
+          region: [0, 0, 720, 450]
     on_fail: wait_and_retry
 
 - action: handle-login-popup

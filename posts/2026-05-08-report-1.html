@@ -1,0 +1,83 @@
+---
+layout: post
+title: "젬대버 운영 보고 #1 — 2026-05-08 16:03"
+date: 2026-05-08 16:03:15 +0900
+categories: [gemmaton, report]
+---
+
+<h2>📊 상태 요약</h2>
+
+<ul>
+  <li><strong>상태:</strong> unknown (분류: )</li>
+  <li><strong>모드:</strong> unknown</li>
+  <li><strong>루프:</strong> #0</li>
+  <li><strong>마지막 액션:</strong>  ❌</li>
+  <li><strong>연속 실패:</strong> 0</li>
+</ul>
+
+<h2>📸 화면 캡처</h2>
+
+<img src="/images/reports/1778223795756.jpg" alt="screen capture" loading="lazy">
+<img src="/images/reports/1778223800516.jpg" alt="screen capture" loading="lazy">
+<img src="/images/reports/1778223804660.jpg" alt="screen capture" loading="lazy">
+<img src="/images/reports/1778223815278.jpg" alt="screen capture" loading="lazy">
+<img src="/images/reports/1778223824921.jpg" alt="screen capture" loading="lazy">
+
+<h2>📈 액션 통계 (최근 100회)</h2>
+
+<table>
+  <tr><th>액션</th><th>실행</th><th>성공</th><th>성공률</th></tr>
+  <tr><td>🔴 restart-app</td><td>4</td><td>0</td><td>0%</td></tr>
+<tr><td>🔴 tap-departure-office</td><td>3</td><td>1</td><td>33%</td></tr>
+<tr><td>🔴 handle-title-connect</td><td>1</td><td>0</td><td>0%</td></tr>
+
+</table>
+
+
+<h3>✅ 성공 로그</h3><ul><li><code>16:03:36 [gemmaton.runtime] INFO: 상태 전이: stopped → event</code></li>
+<li><code>16:01:20 [src.fsm_engine] INFO: [game_state] 13개 상태, 51개 전이 로드</code></li>
+<li><code>16:01:20 [src.fsm_engine] INFO: [strategy_mode] 6개 모드, 14개 전이 로드</code></li>
+<li><code>00:03:38 [gemmaton.runtime] INFO: Codex 액션 성공 — 카운터 리셋, 분류 갱신</code></li>
+<li><code>00:51:22 [src.fsm_engine] INFO: [game_state] 13개 상태, 51개 전이 로드</code></li>
+<li><code>00:51:22 [src.fsm_engine] INFO: [strategy_mode] 6개 모드, 14개 전이 로드</code></li>
+<li><code>00:51:47 [gemmaton.runtime] INFO: 상태 전이: stopped → in-port</code></li>
+<li><code>00:51:59 [gemmaton.runtime] INFO: 모드 전이: RECOVERY → RECOVERY</code></li>
+<li><code>00:53:05 [gemmaton.runtime] INFO: 액션 성공: tap-departure-office</code></li>
+<li><code>00:53:06 [gemmaton.runtime] INFO: FSM 전이 시도: in-port → in-port-departure</code></li></ul>
+
+
+<h2>📝 전체 로그</h2>
+
+<ul>
+<li><code>16:01:20 [src.fsm_engine] INFO: [game_state] 13개 상태, 51개 전이 로드</code></li>
+<li><code>16:01:20 [src.fsm_engine] INFO: [strategy_mode] 6개 모드, 14개 전이 로드</code></li>
+<li><code>16:01:20 [gemmaton.loader] INFO: recognition-map 로드 완료: 23개 액션</code></li>
+<li><code>16:01:20 [gemmaton.loader] INFO: decision_tables 로드 완료: 13개 상태</code></li>
+<li><code>16:01:20 [gemmaton.loader] INFO: checklists 로드 완료: 8개 상태</code></li>
+<li><code>00:03:38 [gemmaton.runtime] INFO: 템플릿 분류: in-port (원본: in-port, 신뢰도: 0.95)</code></li>
+<li><code>00:03:38 [gemmaton.runtime] INFO: 앙상블 분류: best=in-port score=0.67 margin=0.28 methods={'ocr': 'in-port', 'rule': 'sailing', 'template': 'in-port'}</code></li>
+<li><code>00:03:38 [gemmaton.runtime] INFO: Codex 액션 성공 — 카운터 리셋, 분류 갱신</code></li>
+<li><code>00:03:38 [gemmaton.runtime] INFO: Codex 분류 갱신: in-port (actual_state=in-port)</code></li>
+<li><code>00:51:22 [src.fsm_engine] INFO: [game_state] 13개 상태, 51개 전이 로드</code></li>
+<li><code>00:51:22 [src.fsm_engine] INFO: [strategy_mode] 6개 모드, 14개 전이 로드</code></li>
+<li><code>00:51:22 [gemmaton.loader] INFO: recognition-map 로드 완료: 22개 액션</code></li>
+<li><code>00:51:22 [gemmaton.loader] INFO: decision_tables 로드 완료: 12개 상태</code></li>
+<li><code>00:51:22 [gemmaton.loader] INFO: checklists 로드 완료: 8개 상태</code></li>
+<li><code>00:51:42 [gemmaton.runtime] INFO: OCR 키워드 분류: in-port (9.2s)</code></li>
+<li><code>00:51:42 [gemmaton.rule_classifier] INFO: 규칙 분류: in-port (점수: event=0 port=11 sail=0 dialog=0 map=0, conf=1.00)</code></li>
+<li><code>00:51:42 [gemmaton.runtime] INFO: 규칙 분류: in-port (원본: in-port, 신뢰도: 1.00)</code></li>
+<li><code>00:51:47 [gemmaton.runtime] INFO: 템플릿 분류: in-port (원본: in-port, 신뢰도: 0.96)</code></li>
+<li><code>00:51:47 [gemmaton.runtime] INFO: 앙상블 분류: best=in-port score=0.92 margin=0.53 methods={'ocr': 'in-port', 'rule': 'in-port', 'template': 'in-port'}</code></li>
+<li><code>00:51:47 [gemmaton.runtime] INFO: 분류 안정성: detected=in-port, stable=False</code></li>
+<li><code>00:51:47 [gemmaton.runtime] INFO: 상태 전이: stopped → in-port</code></li>
+<li><code>00:51:47 [gemmaton.runtime] INFO: 상태: in-port (감지: in-port)</code></li>
+<li><code>00:51:59 [gemmaton.runtime] INFO: 모드 전이: RECOVERY → RECOVERY</code></li>
+<li><code>00:52:10 [gemmaton.runtime] INFO: 핵심 액션 격리 해제: open-minimap</code></li>
+<li><code>00:52:10 [gemmaton.runtime] INFO: 격리된 액션 후보 제외: open-minimap</code></li>
+<li><code>00:52:10 [gemmaton.runtime] INFO: 선택 액션: tap-departure-office (모드: RECOVERY)</code></li>
+<li><code>00:52:10 [gemmaton.runtime] INFO: 액션 실행: tap-departure-office</code></li>
+<li><code>00:53:05 [gemmaton.runtime] INFO: 액션 성공: tap-departure-office</code></li>
+<li><code>00:53:05 [gemmaton.runtime] INFO: 액션 트레이스 아카이브: {'user:minimap-all-locations-npc-capture'}</code></li>
+<li><code>00:53:06 [gemmaton.runtime] INFO: FSM 전이 시도: in-port → in-port-departure</code></li>
+
+</ul>
